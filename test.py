@@ -47,6 +47,7 @@ for elem in records:
                 lane_number_list.append(elem['Nazwa_Linii'])
                 update_time_list.append(update_time)
 
+<<<<<<< HEAD
 line_brigade_data = {'Numer_Linii': lane_number_list, 'brigade_id': brigade_id_list, 'update_time': update_time_list}
 line_brigade_df = pd.DataFrame(line_brigade_data) # Nowy dataframe z numerem linii i id brygady
 
@@ -65,3 +66,21 @@ for i in range(len(line_brigade_df)):
         # print(temp_df)
         counter += 1
 print(counter)
+=======
+line_brigade_data = {'Numer_Linii': lane_number_list, 'brigade_id': brigade_id_list}
+line_brigade_df = pd.DataFrame(line_brigade_data) # dataframe z numerem linii i id brygady
+
+#service_id: {3 : sob, 4 : nie, 6 : pon/wt/sr/czw, 8 : pt}
+trips_df = pd.read_csv("data/trips.txt")
+
+
+# for i in range(len(line_brigade_df)):
+for i in range(1):
+    # Każda iteracja i drukuje dataframe możliwych trip_ids dla pojazdu danej linii o danym brigade_id.
+    # Skoro jest to ten konkretny pojazd, jego aktualna godzina będzie mogła znajdować się tylko w jednym z przedziałów czasowych tripów
+    # A więc mając brigade_id i route_id i aktualny czas jestesmy w stanie okreslic, jaki jest trip_id skurwysyna, a zatem dopasowac
+    # Odpowiedni rozklad jazdy ESSA
+    
+    print(trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))])
+
+>>>>>>> e8f6d961c2ac7548bed6793a29f5b69c540a2fb1
