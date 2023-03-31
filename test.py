@@ -34,23 +34,34 @@ print(current_day_time)
 # ZBIERZ ID BRYGADY (2 ostatnie cyfry)
 brigade_id_list = []
 lane_number_list = []
+update_time_list = []
 for elem in records:
     if elem['Nazwa_Linii'] != '' and elem['Nazwa_Linii'] != 'None':
         if elem['Brygada'] != '' and elem['Brygada'] != 'None':
             update_time = datetime.strptime(elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
             time_difference = abs(current_day_time - update_time) # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
-            if time_difference.seconds > 300:
+            if time_difference.seconds < 300:
                 elem['brigade_id'] = elem['Brygada'][-2:]
                 brigade_id_no_zeros = delete_zeros_at_beginning(elem['brigade_id']) # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
                 brigade_id_list.append(brigade_id_no_zeros)
                 lane_number_list.append(elem['Nazwa_Linii'])
-                #print(brigade_id_no_zeros, elem['Nazwa_Linii'], elem['Brygada'])
+                update_time_list.append(update_time)
 
-line_brigade_data = {'Numer_Linii': lane_number_list, 'brigade_id': brigade_id_list}
+line_brigade_data = {'Numer_Linii': lane_number_list, 'brigade_id': brigade_id_list, 'update_time': update_time_list}
 line_brigade_df = pd.DataFrame(line_brigade_data) # Nowy dataframe z numerem linii i id brygady
 
-trips_df = pd.read_csv("data/trips.csv")
+trips_df = pd.read_csv("data/trips.txt")
+stop_times_df = pd.read_csv("data/stop_times.txt")
 
+counter = 0
 for i in range(len(line_brigade_df)):
     # Jeśli numer linii i id brygady w rzędzie w trips_df jest taki sam jak w danym rzędzie line_brigade_df to go wydrukuj
-    print(trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))])
+    temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == 6) & (trips_df['direction_id'] == 1)]
+    # temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))]
+    temp_update_time = line_brigade_df['update_time'][i]
+    print(temp_update_time)
+    # temp_df.loc[(temp_df['trip_id'] >= abs(datetime.strptime(stop_times_df['arrival_time'], "%H:%M:%S") - ud_time).seconds) or ]
+    if temp_df.empty != True:
+        # print(temp_df)
+        counter += 1
+print(counter)
