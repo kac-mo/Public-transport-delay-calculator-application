@@ -39,7 +39,7 @@ for elem in records:
         if elem['Brygada'] != '' and elem['Brygada'] != 'None':
             update_time = datetime.strptime(elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
             time_difference = abs(current_day_time - update_time) # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
-            if time_difference.seconds > 300:
+            if time_difference.seconds < 300:
                 elem['brigade_id'] = elem['Brygada'][-2:]
                 brigade_id_no_zeros = delete_zeros_at_beginning(elem['brigade_id']) # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
                 brigade_id_list.append(brigade_id_no_zeros)
@@ -47,10 +47,18 @@ for elem in records:
                 #print(brigade_id_no_zeros, elem['Nazwa_Linii'], elem['Brygada'])
 
 line_brigade_data = {'Numer_Linii': lane_number_list, 'brigade_id': brigade_id_list}
-line_brigade_df = pd.DataFrame(line_brigade_data) # Nowy dataframe z numerem linii i id brygady
+line_brigade_df = pd.DataFrame(line_brigade_data) # dataframe z numerem linii i id brygady
 
-trips_df = pd.read_csv("data/trips.csv")
+#service_id: {3 : sob, 4 : nie, 6 : pon/wt/sr/czw, 8 : pt}
+trips_df = pd.read_csv("data/trips.txt")
 
-for i in range(len(line_brigade_df)):
-    # Jeśli numer linii i id brygady w rzędzie w trips_df jest taki sam jak w danym rzędzie line_brigade_df to go wydrukuj
+
+# for i in range(len(line_brigade_df)):
+for i in range(1):
+    # Każda iteracja i drukuje dataframe możliwych trip_ids dla pojazdu danej linii o danym brigade_id.
+    # Skoro jest to ten konkretny pojazd, jego aktualna godzina będzie mogła znajdować się tylko w jednym z przedziałów czasowych tripów
+    # A więc mając brigade_id i route_id i aktualny czas jestesmy w stanie okreslic, jaki jest trip_id skurwysyna, a zatem dopasowac
+    # Odpowiedni rozklad jazdy ESSA
+    
     print(trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))])
+
