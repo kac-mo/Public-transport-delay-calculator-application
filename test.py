@@ -54,6 +54,29 @@ line_brigade_df = pd.DataFrame(line_brigade_data) # Nowy dataframe z numerem lin
 trips_df = pd.read_csv("data/trips.txt")
 stop_times_df = pd.read_csv("data/stop_times.txt")
 
+trip_id_list = []
+trip_start_time_list = []
+trip_end_time_list = []
+i = 0
+while i < len(stop_times_df):
+    if trip_id_list.count(stop_times_df['trip_id'][i]) == 0:
+        trip_start_time = stop_times_df['arrival_time'][i]
+        j = i
+        while stop_times_df['trip_id'][i] == stop_times_df['trip_id'][j]:
+            j += 1
+            if j == len(stop_times_df):
+                break
+        trip_end_time = stop_times_df['arrival_time'][j-1]
+        trip_id_list.append = stop_times_df['trip_id'][i]
+        trip_start_time_list.append[trip_start_time]
+        trip_end_time_list.append[trip_end_time]
+        i = j
+        if j == len(stop_times_df):
+            break
+
+stop_times_start_end_data = {'trip_id': trip_id_list, 'trip_start_time': trip_start_time_list, 'trip_end_time': trip_end_time_list}
+
+    
 
 for i in range(len(line_brigade_df)):
     # Każda iteracja i drukuje dataframe możliwych trip_ids dla pojazdu danej linii o danym brigade_id.
@@ -63,4 +86,8 @@ for i in range(len(line_brigade_df)):
 
     temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == 6) & (trips_df['direction_id'] == 1)]
     # temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))]
-    print(line_brigade_df['update_time'][i])
+
+    # temp_update_time = line_brigade_df['update_time'][i]
+    # print(temp_update_time)
+    # if temp_df.empty != True:
+        # print(temp_df)
