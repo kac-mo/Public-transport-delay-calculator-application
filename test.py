@@ -166,7 +166,6 @@ for i in range(len(line_brigade_df)):
 
     # temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == 6) & (trips_df['direction_id'] == 1)]
     # temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))]
-    
 
     # TERAZ: mamy plik trip_id_time_windows.csv, teraz trzeba sprawdzic, ktory z mozliwych tripow ma takie okno czasowe, w ktorym moze znajdowac sie interesujacy nas pojazd
     # miejmy nadzieje, ze to bedzie 1 match :)
