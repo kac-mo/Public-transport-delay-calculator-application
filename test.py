@@ -128,7 +128,6 @@ for elem in records:
         if elem['Brygada'] != '' and elem['Brygada'] != 'None':
             update_time = datetime.strptime(elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
             time_difference = abs(current_day_time - update_time) # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
-            print(time_difference.seconds)
             if time_difference.seconds < 300:
                 elem['brigade_id'] = elem['Brygada'][-2:] # Pobieram id brygady - unikalne ID per pojazd per linia
                 brigade_id_no_zeros = delete_zeros_at_beginning(elem['brigade_id']) # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
@@ -139,9 +138,9 @@ for elem in records:
                 update_time_list.append(update_time)
 
 line_brigade_data = {'Numer_Linii': lane_number_list, 'brigade_id': brigade_id_list, 'update_time': update_time_list}
-print(line_brigade_data)
 line_brigade_df = pd.DataFrame(line_brigade_data) # Nowy dataframe z numerem linii i id brygady
 
+trip_id_time_windows_df = pd.read_csv("data/trip_id_time_windows.csv")
 trips_df = pd.read_csv("data/trips.txt")
 stop_times_df = pd.read_csv("data/stop_times.txt")
 
@@ -155,18 +154,32 @@ current_service_id = week_day_service_id_dict[current_week_day] # Service id do 
 for i in range(10):
     scheduled_departure_time = f'{str(current_day_time.date())} {stop_times_df.at[i, "departure_time"]}'
 
-create_trips_time_windows_csv(stop_times_df)
+# create_trips_time_windows_csv(stop_times_df)
 
-print(line_brigade_df)
 for i in range(len(line_brigade_df)):
     # Każda iteracja i drukuje dataframe możliwych trip_ids dla pojazdu danej linii o danym brigade_id.
     # Skoro jest to ten konkretny pojazd, jego aktualna godzina będzie mogła znajdować się tylko w jednym z przedziałów czasowych tripów
-    # A więc mając brigade_id i route_id i aktualny czas jestesmy w stanie okreslic, jaki jest trip_id skurwysyna, a zatem dopasowac
+    # A więc mając brigade_id i route_id i aktualny czas jestesmy w stanie okreslic, jaki jest trip_id pojazdu, a zatem dopasowac
     # Odpowiedni rozklad jazdy ESSA
 
     # temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == 6) & (trips_df['direction_id'] == 1)]
-    # temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))]
+    temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == current_service_id)]
 
     # TERAZ: mamy plik trip_id_time_windows.csv, teraz trzeba sprawdzic, ktory z mozliwych tripow ma takie okno czasowe, w ktorym moze znajdowac sie interesujacy nas pojazd
     # miejmy nadzieje, ze to bedzie 1 match :)
-    print(line_brigade_df.iloc[i])
+    temp_list = []
+    if len(list(temp_df['trip_id'])) > 0:
+        possible_trip_id_list = list(temp_df['trip_id'])
+        possible_route_id = list(temp_df['route_id'])[0]
+        for trip_id in possible_trip_id_list:
+            time_window_df = trip_id_time_windows_df.loc[(trip_id_time_windows_df['trip_id'] == trip_id)]
+            datetime.strptime(elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
+            possible_start_time = datetime.strptime(time_window_df.iloc[0,2], "%Y-%m-%d %H:%M:%S")
+            possible_end_time = datetime.strptime(time_window_df.iloc[0,3], "%Y-%m-%d %H:%M:%S")
+            if current_day_time > possible_start_time and current_day_time < possible_end_time:
+                temp_list.append((trip_id, possible_route_id))
+        if len(temp_list) > 1:
+            print("eh :(")
+            print(temp_list)
+            
+print("done")
