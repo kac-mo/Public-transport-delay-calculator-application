@@ -3,14 +3,23 @@ package com.example.wropoznienia
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
 import android.preference.PreferenceManager
+import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.opencsv.CSVReader
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import java.io.File
+import java.io.FileReader
+import java.io.InputStreamReader
 
 
 class MainActivity : AppCompatActivity() {
@@ -37,11 +46,26 @@ class MainActivity : AppCompatActivity() {
         map!!.setTileSource(TileSourceFactory.MAPNIK)
         requestPermissionsIfNecessary(
             arrayOf( // if you need to show the current location, uncomment the line below
-                // Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION,
                 // WRITE_EXTERNAL_STORAGE is required in order to show the map
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
             )
         )
+        map!!.setBuiltInZoomControls(true);
+        map!!.setMultiTouchControls(true);
+        val mapController = map!!.controller
+        mapController.setZoom(14)
+        val startPoint = GeoPoint(51.10190, 16.99834)
+        mapController.setCenter(startPoint)
+
+        val startMarker = Marker(map)
+        startMarker.position = startPoint
+        startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        map!!.overlays.add(startMarker)
+        map!!.invalidate();
+        startMarker.setIcon(getResources().getDrawable(R.drawable.mymarker));
+        startMarker.setTitle(readCsvFile());
+
     }
 
     public override fun onResume() {
@@ -79,6 +103,24 @@ class MainActivity : AppCompatActivity() {
                 REQUEST_PERMISSIONS_REQUEST_CODE
             )
         }
+    }
+
+
+    private fun readCsvFile(): String {
+        var csvLines = ""
+        try {
+            val reader = CSVReader(InputStreamReader(resources.openRawResource(R.raw.cokolwiek))) // Specify asset file name
+            var nextLine: Array<String>?
+            while (reader.readNext().also { nextLine = it } != null) {
+                // nextLine[] is an array of values from the line
+                csvLines += nextLine!!.joinToString(separator = ",") + "\n"
+            }
+            reader.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "The specified file was not found", Toast.LENGTH_SHORT).show()
+        }
+        return csvLines
     }
 
     private fun requestPermissionsIfNecessary(permissions: Array<String>) {
