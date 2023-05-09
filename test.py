@@ -63,6 +63,59 @@ def match_datetime_midnight_formatting(time, date_today, date_tomorrow):
         output = f"{date_today} {time}"
     return output
 
+def test_f2(line_brigade_df, trips_df, stops_df, trip_ids_list, possible_start_time_list, possible_end_time_list):
+    route_ids = []
+    directions = []
+    current_lat = []
+    current_lon = []
+    for i in range(len(line_brigade_df)):
+        try:
+            temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (
+                trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == current_service_id)]
+            # Aktualna lokalizacja pojazdu
+            current_vehicle_lat = line_brigade_df['pozycja_szerokosc'][i]
+            current_vehicle_lon = line_brigade_df['pozycja_dlugosc'][i]
+
+            possible_trips_list = []
+            if len(list(temp_df['trip_id'])) > 0:
+                possible_trip_id_list = list(temp_df['trip_id'])
+                possible_route_id = list(temp_df['route_id'])[0]
+
+                for trip_id in possible_trip_id_list:
+                    index = trip_ids_list.index(trip_id)
+                    possible_start_time = datetime.strptime(
+                        possible_start_time_list[index], "%Y-%m-%d %H:%M:%S")  # Czas startu danego tripa
+                    possible_end_time = datetime.strptime(
+                        possible_end_time_list[index], "%Y-%m-%d %H:%M:%S")  # Czas zakończenia danego tripa
+                    possible_trip_length = possible_end_time - \
+                        possible_start_time  # Rozkładowy czas trwania trasy
+                    time_since_trip_started = possible_end_time - \
+                        current_day_time  # Czas od rozkładowego wyruszenia
+                    # Sprawdzam możliwe tripy, na których może znajdować się pojazd
+                    if current_day_time > possible_start_time and current_day_time < possible_end_time:
+                        possible_trips_list.append(
+                            (trip_id, possible_route_id, possible_start_time, possible_end_time, possible_trip_length, time_since_trip_started))
+
+                    # Jeśli możliwych tripów było > 1, wówczas dokonuję weryfikacji
+                    if len(possible_trips_list) > 1:
+                        try:
+                            possible_trips_list = solve_double_possible_paths(
+                                possible_trips_list, trip_id_time_windows_df, stops_df, trips_df, current_vehicle_lat, current_vehicle_lon)
+                        except:
+                            print(
+                                "- - - -\nUNRESOLVED ERROR, FLIPPING A COIN ON VEHICLE MATCH...")
+                            possible_trips_list = [possible_trips_list[0]]
+
+                if len(possible_trips_list) > 0:
+                    route_ids.append(possible_route_id)
+                    directions.append(
+                        temp_df.loc[(temp_df['trip_id'] == possible_trips_list[0][0])].iloc[0, 3])
+                    current_lat.append(current_vehicle_lat)
+                    current_lon.append(current_vehicle_lon)
+        except:
+            pass
+
+    return (route_ids, directions, current_lat, current_lon)
 
 def create_trips_time_windows_csv(stop_times_df, line_brigade_df, trips_df):
     """
@@ -122,18 +175,20 @@ def create_trips_time_windows_csv(stop_times_df, line_brigade_df, trips_df):
                     f"trip_id_time_windows_progress: {str(round((j / (len(stop_times_df)) * 100), 0))}%")
                 past_pct = str(round((j / (len(stop_times_df)) * 100), 0))
 
-    route_ids, directions, current_pos = test_f2(line_brigade_df, trips_df, stops_df, trip_id_list, trip_start_time_list, trip_end_time_list)
+    route_ids, directions, current_lat, current_lon = test_f2(line_brigade_df, trips_df, stops_df, trip_id_list, trip_start_time_list, trip_end_time_list)
 
     # Co potrzebujemy w CSV? Route_ID, Kierunek, pozycja, rozkład jazdy
-    stop_times_start_end_data = {'trip_id': trip_id_list, 'trip_start_time': trip_start_time_list,
-                                 'trip_end_time': trip_end_time_list, 'trip_stop_ids': trip_first_last_stop_ids_list, 'trip_stop_ids_times': trip_stop_times}
-    stop_times_start_end_df = pd.DataFrame(stop_times_start_end_data)
-    stop_times_start_end_df.to_csv('data/trip_id_time_windows.csv')
+    print(directions)
+    data = {'route_id': route_ids, 'direction': directions, 'position_lat': current_lat, 'position_lon': current_lon}
+    # stop_times_start_end_data = {'trip_id': trip_id_list, 'trip_start_time': trip_start_time_list,
+    #                              'trip_end_time': trip_end_time_list, 'trip_stop_ids': trip_first_last_stop_ids_list, 'trip_stop_ids_times': trip_stop_times}
+    stop_times_start_end_df = pd.DataFrame(data)
+    stop_times_start_end_df.to_csv('app/src/main/res/raw/vehicles_data.csv', encoding='utf-8-sig')
 
     print("trip_id_time_windows_progress: file creation completed")
 
 
-def solve_double_possible_paths(possible_trips_list, trip_id_time_windows_df, stops_df, current_vehicle_pos):
+def solve_double_possible_paths(possible_trips_list, trip_id_time_windows_df, stops_df, current_lat, current_lon):
     stops1 = trip_id_time_windows_df.loc[(trip_id_time_windows_df['trip_id'] == possible_trips_list[0][0])].iloc[0, 4].replace(
         "'", "").replace(" ", "")[1:-1].split(",")  # ID pierwszego i ostatniego przystanku 1. możliwej trasy
     stops2 = trip_id_time_windows_df.loc[(trip_id_time_windows_df['trip_id'] == possible_trips_list[1][0])].iloc[0, 4].replace(
@@ -155,9 +210,9 @@ def solve_double_possible_paths(possible_trips_list, trip_id_time_windows_df, st
         stops2[1]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops2[1]))].iloc[0, 4])
 
     current_distance_from_first_stop1 = distance.geodesic(
-        current_vehicle_pos, first_stop_pos1).km
+        (current_lat, current_lon), first_stop_pos1).km
     current_distance_from_first_stop2 = distance.geodesic(
-        current_vehicle_pos, first_stop_pos2).km
+        (current_lat, current_lon), first_stop_pos2).km
 
     trip_length_1 = distance.geodesic(first_stop_pos1, final_stop_pos1).km
     trip_length_2 = distance.geodesic(first_stop_pos2, final_stop_pos2).km
@@ -215,7 +270,6 @@ def create_line_brigade_df(records):
 
 
 stop_times_df = pd.read_csv("data/stop_times.txt")
-# create_trips_time_windows_csv(stop_times_df)
 trip_id_time_windows_df = pd.read_csv("data/trip_id_time_windows.csv")
 trips_df = pd.read_csv("data/trips.txt")
 stops_df = pd.read_csv("data/stops.txt")
@@ -233,6 +287,7 @@ current_service_id = week_day_service_id_dict[current_week_day]
 
 line_brigade_df = create_line_brigade_df(records)
 
+create_trips_time_windows_csv(stop_times_df, line_brigade_df, trips_df)
 
 def test_f(line_brigade_df, trips_df, trip_ids_list, possible_start_time_list, possible_end_time_list):
     route_ids = []
@@ -294,51 +349,4 @@ def test_f(line_brigade_df, trips_df, trip_ids_list, possible_start_time_list, p
             print("- - - - - -")
 
 
-def test_f2(line_brigade_df, trips_df, stops_df, trip_ids_list, possible_start_time_list, possible_end_time_list):
-    route_ids = []
-    directions = []
-    current_pos = []
-    for i in range(len(line_brigade_df)):
-        temp_df = trips_df.loc[(trips_df['route_id'] == line_brigade_df['Numer_Linii'][i]) & (
-            trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i])) & (trips_df['service_id'] == current_service_id)]
-        # Aktualna lokalizacja pojazdu
-        current_vehicle_pos = (
-            line_brigade_df['pozycja_szerokosc'][i], line_brigade_df['pozycja_dlugosc'][i])
 
-        possible_trips_list = []
-        if len(list(temp_df['trip_id'])) > 0:
-            possible_trip_id_list = list(temp_df['trip_id'])
-            possible_route_id = list(temp_df['route_id'])[0]
-
-            for trip_id in possible_trip_id_list:
-                index = trip_ids_list.find(trip_id)
-                possible_start_time = datetime.strptime(
-                    possible_start_time_list[index], "%Y-%m-%d %H:%M:%S")  # Czas startu danego tripa
-                possible_end_time = datetime.strptime(
-                    possible_end_time_list[index], "%Y-%m-%d %H:%M:%S")  # Czas zakończenia danego tripa
-                possible_trip_length = possible_end_time - \
-                    possible_start_time  # Rozkładowy czas trwania trasy
-                time_since_trip_started = possible_end_time - \
-                    current_day_time  # Czas od rozkładowego wyruszenia
-                # Sprawdzam możliwe tripy, na których może znajdować się pojazd
-                if current_day_time > possible_start_time and current_day_time < possible_end_time:
-                    possible_trips_list.append(
-                        (trip_id, possible_route_id, possible_start_time, possible_end_time, possible_trip_length, time_since_trip_started))
-
-                # Jeśli możliwych tripów było > 1, wówczas dokonuję weryfikacji
-                if len(possible_trips_list) > 1:
-                    try:
-                        possible_trips_list = solve_double_possible_paths(
-                            possible_trips_list, trip_id_time_windows_df, stops_df, trips_df, current_vehicle_pos)
-                    except:
-                        print(
-                            "- - - -\nUNRESOLVED ERROR, FLIPPING A COIN ON VEHICLE MATCH...")
-                        possible_trips_list = [possible_trips_list[0]]
-
-                if len(possible_trips_list) > 0:
-                    route_ids.append(possible_route_id)
-                    directions.append(
-                        temp_df.loc[(temp_df['trip_id'] == possible_trips_list[0][0])].iloc[0, 3])
-                    current_pos.append(current_vehicle_pos)
-
-    return (route_ids, directions, current_pos)
