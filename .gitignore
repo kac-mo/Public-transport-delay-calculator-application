@@ -14,3 +14,4 @@
 .cxx
 local.properties
 /data/test.xlsx
+/app/src/main/res/raw/vehicles_data.csv
