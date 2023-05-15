@@ -3,22 +3,24 @@ package com.example.wropoznienia
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
 import android.preference.PreferenceManager
-import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.opencsv.CSVReader
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import org.apache.commons.lang3.mutable.Mutable
+import org.osmdroid.api.IMapController
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import java.io.File
-import java.io.FileReader
 import java.io.InputStreamReader
 
 
@@ -57,15 +59,30 @@ class MainActivity : AppCompatActivity() {
         mapController.setZoom(14)
         val startPoint = GeoPoint(51.10190, 16.99834)
         mapController.setCenter(startPoint)
+        var stopList = mutableListOf<Marker>()
+        var vehicleList = mutableListOf<Marker>()
+        map!!.setMinZoomLevel(12.0)
+        map!!.setMaxZoomLevel(18.0)
 
-        val startMarker = Marker(map)
-        startMarker.position = startPoint
-        startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-        map!!.overlays.add(startMarker)
-        map!!.invalidate();
-        startMarker.setIcon(getResources().getDrawable(R.drawable.mymarker));
-        startMarker.setTitle(readCsvFile());
+        stopList = readCsvFile(R.raw.stops, stopList)
+        vehicleList = readCsvFile(R.raw.vehicles_data, vehicleList)
 
+        GlobalScope.launch {
+            while (isActive) {
+                if (map!!.zoomLevel < 14) {
+                    for(stop in stopList) {
+                        map!!.overlays.remove(stop)
+                    }
+                    stopList.clear()
+                    map!!.invalidate()
+                } else {
+                    if (stopList.isEmpty()) {
+                        stopList = readCsvFile(R.raw.stops, stopList)
+                    }
+                    map!!.invalidate()
+                }
+            }
+        }
     }
 
     public override fun onResume() {
@@ -106,21 +123,76 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun readCsvFile(): String {
+    private fun readCsvFile(file: Int, markerList: MutableList<Marker>): MutableList<Marker> {
+        var markerListCopy = markerList
         var csvLines = ""
         try {
-            val reader = CSVReader(InputStreamReader(resources.openRawResource(R.raw.cokolwiek))) // Specify asset file name
+            val reader = CSVReader(InputStreamReader(resources.openRawResource(file))) // Specify asset file name
             var nextLine: Array<String>?
-            while (reader.readNext().also { nextLine = it } != null) {
-                // nextLine[] is an array of values from the line
-                csvLines += nextLine!!.joinToString(separator = ",") + "\n"
+            nextLine = reader.readNext();
+            if (nextLine[1] == "route_id") {
+                while (reader.readNext().also { nextLine = it } != null) {
+                    // nextLine[] is an array of values from the line
+                    csvLines = nextLine!!.joinToString(separator = ",")
+                    markerListCopy = addVehicleToMap(createVehicleObject(csvLines), markerListCopy)
+                }
+            } else {
+                while (reader.readNext().also { nextLine = it } != null) {
+                    // nextLine[] is an array of values from the line
+                    csvLines = nextLine!!.joinToString(separator = ",")
+                    markerListCopy = addStopToMap(createStopObject(csvLines), markerListCopy)
+                }
             }
             reader.close()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "The specified file was not found", Toast.LENGTH_SHORT).show()
         }
-        return csvLines
+        return markerListCopy
+    }
+
+    private fun createVehicleObject(mpkLine: String): Vehicle {
+        val values = mpkLine.split(",")
+        return Vehicle(
+            values[0].toInt(),
+            values[1],
+            values[2],
+            values[3].toDouble(),
+            values[4].toDouble()
+        )
+    }
+
+    private fun createStopObject(mpkLine: String): Stop {
+        val values = mpkLine.split(",")
+        return Stop(
+            values[0].toInt(),
+            values[1].toInt(),
+            values[2],
+            values[3].toDouble(),
+            values[4].toDouble()
+        )
+    }
+
+    private fun addStopToMap(stop: Stop, stopList: MutableList<Marker>): MutableList<Marker> {
+        val stopMarker = Marker(map)
+        stopMarker.position = GeoPoint(stop.positionLat, stop.positionLon)
+        stopMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        map!!.overlays.add(stopMarker)
+        stopMarker.setIcon(getResources().getDrawable(R.drawable.mymarker3));
+        stopMarker.setTitle(stop.name);
+        stopList.add(stopMarker)
+        return stopList
+    }
+
+    private fun addVehicleToMap(vehicle: Vehicle, vehicleList: MutableList<Marker>): MutableList<Marker> {
+        val vehicleMarker = Marker(map)
+        vehicleMarker.position = GeoPoint(vehicle.positionLat, vehicle.positionLon)
+        vehicleMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        map!!.overlays.add(vehicleMarker)
+        vehicleMarker.setIcon(getResources().getDrawable(R.drawable.mymarker));
+        vehicleMarker.setTitle("Szczur nr " + vehicle.routeId + "\nKierunek: " + vehicle.direction);
+        vehicleList.add(vehicleMarker)
+        return vehicleList
     }
 
     private fun requestPermissionsIfNecessary(permissions: Array<String>) {
