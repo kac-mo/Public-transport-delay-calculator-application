@@ -22,6 +22,17 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.io.InputStreamReader
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.ktx.initialize
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.ktx.component1
+import com.google.firebase.storage.ktx.component2
+import com.google.firebase.storage.ktx.component3
+import com.google.firebase.storage.ktx.storage
+import com.google.firebase.storage.ktx.storageMetadata
+import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -63,6 +74,23 @@ class MainActivity : AppCompatActivity() {
         var vehicleList = mutableListOf<Marker>()
         map!!.setMinZoomLevel(12.0)
         map!!.setMaxZoomLevel(18.0)
+
+        var storage = Firebase.storage
+        var storageRef = storage.reference
+
+        //val gsReference = storage.getReferenceFromUrl("gs://wropoznienia-a3395.appspot.com/vehicles_data.csv")
+        //val file = gsReference.getStream();
+
+        val islandRef = storageRef.child("/vehicles_data.csv")
+
+        val downloadDirectory = File("src/res/raw") // Replace "/path/to/directory" with the desired directory path
+        val localFile = File(downloadDirectory, "vehicles_data.csv")
+
+        islandRef.getFile(localFile).addOnSuccessListener {
+            // Local temp file has been created
+        }.addOnFailureListener {
+            // Handle any errors
+        }
 
         stopList = readCsvFile(R.raw.stops, stopList)
         vehicleList = readCsvFile(R.raw.vehicles_data, vehicleList)

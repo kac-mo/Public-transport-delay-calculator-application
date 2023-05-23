@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -38,11 +39,13 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.google.firebase:firebase-storage-ktx:20.0.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation 'org.osmdroid:osmdroid-android:6.1.13'
     implementation 'com.github.MKergall:osmbonuspack:6.9.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.5.0"
     implementation 'com.opencsv:opencsv:4.6'
+    implementation platform('com.google.firebase:firebase-bom:32.0.0')
 
 }
