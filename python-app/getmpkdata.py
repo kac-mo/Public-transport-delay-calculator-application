@@ -28,6 +28,6 @@ def get_data():
     return records
 
 def get_schedules(url, destination='.'):
-    http_response = urllib.urlopen(url)
+    http_response = urllib.request.urlopen(url)
     zipfile = ZipFile(BytesIO(http_response.read()))
     zipfile.extractall(path=destination)

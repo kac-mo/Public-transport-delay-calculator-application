@@ -3,36 +3,35 @@ package com.example.wropoznienia
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
 import android.preference.PreferenceManager
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.crashlytics.buildtools.reloc.org.apache.commons.codec.digest.DigestUtils
+import com.google.firebase.crashlytics.buildtools.reloc.org.apache.commons.io.output.ByteArrayOutputStream
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.ktx.storage
 import com.opencsv.CSVReader
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.apache.commons.lang3.mutable.Mutable
-import org.osmdroid.api.IMapController
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import java.io.InputStreamReader
-import com.google.firebase.ktx.Firebase
-import com.google.firebase.ktx.initialize
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageException
-import com.google.firebase.storage.StorageReference
-import com.google.firebase.storage.ktx.component1
-import com.google.firebase.storage.ktx.component2
-import com.google.firebase.storage.ktx.component3
-import com.google.firebase.storage.ktx.storage
-import com.google.firebase.storage.ktx.storageMetadata
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.InputStreamReader
+import java.security.MessageDigest
 
 
 class MainActivity : AppCompatActivity() {
@@ -75,28 +74,22 @@ class MainActivity : AppCompatActivity() {
         map!!.setMinZoomLevel(12.0)
         map!!.setMaxZoomLevel(18.0)
 
-        var storage = Firebase.storage
-        var storageRef = storage.reference
+        //var storage = Firebase.storage
+        //var storageRef = storage.reference
 
         //val gsReference = storage.getReferenceFromUrl("gs://wropoznienia-a3395.appspot.com/vehicles_data.csv")
         //val file = gsReference.getStream();
 
-        val islandRef = storageRef.child("/vehicles_data.csv")
+        downloadFile(vehicleList)
 
-        val downloadDirectory = File("src/res/raw") // Replace "/path/to/directory" with the desired directory path
-        val localFile = File(downloadDirectory, "vehicles_data.csv")
+        //stopList = readCsvFile(R.raw.stops, stopList)
+        //vehicleList = readCsvFile("/storage/emulated/0/Android/data/com.example.wropoznienia/files/file_test/vehicles_data.csv", vehicleList)
 
-        islandRef.getFile(localFile).addOnSuccessListener {
-            // Local temp file has been created
-        }.addOnFailureListener {
-            // Handle any errors
-        }
-
-        stopList = readCsvFile(R.raw.stops, stopList)
-        vehicleList = readCsvFile(R.raw.vehicles_data, vehicleList)
-
+        /***
         GlobalScope.launch {
             while (isActive) {
+                delay(30_000)
+                /***
                 if (map!!.zoomLevel < 14) {
                     for(stop in stopList) {
                         map!!.overlays.remove(stop)
@@ -105,12 +98,20 @@ class MainActivity : AppCompatActivity() {
                     map!!.invalidate()
                 } else {
                     if (stopList.isEmpty()) {
-                        stopList = readCsvFile(R.raw.stops, stopList)
+                        //stopList = readCsvFile(R.raw.stops, stopList)
                     }
                     map!!.invalidate()
                 }
+                ***/
+                for (vehicle in vehicleList) {
+                    map!!.overlays.remove(vehicle)
+                }
+                vehicleList.clear()
+                map!!.invalidate()
+                downloadFile(vehicleList)
             }
         }
+        ***/
     }
 
     public override fun onResume() {
@@ -150,14 +151,88 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun calculateMD5(file: File): String {
+        val digest = MessageDigest.getInstance("MD5")
+        val buffer = ByteArray(8192)
+        val inputStream = FileInputStream(file)
+        var read: Int
+        while (inputStream.read(buffer).also { read = it } > 0) {
+            digest.update(buffer, 0, read)
+        }
+        inputStream.close()
 
-    private fun readCsvFile(file: Int, markerList: MutableList<Marker>): MutableList<Marker> {
+        val md5sum = digest.digest()
+        val hexString = StringBuilder()
+        for (i in md5sum.indices) {
+            val hex = Integer.toHexString(0xFF and md5sum[i].toInt())
+            if (hex.length == 1) {
+                hexString.append('0')
+            }
+            hexString.append(hex)
+        }
+        return hexString.toString()
+    }
+    private fun downloadFile(markerList: MutableList<Marker>) {
+        val storage = FirebaseStorage.getInstance()
+        val storageRef = storage.reference.child("vehicles_data.csv")
+
+        val rootPath: File = File(application.getExternalFilesDir(null), "file_test")
+        if (!rootPath.exists()) {
+            rootPath.mkdirs()
+        }
+        val localFile = File(rootPath, "vehicles_data.csv")
+
+        // Calculate MD5 hash of the local file
+        val localFileMD5 = calculateMD5(localFile)
+
+        // Compare MD5 hashes
+        compareMD5Hash(storageRef, localFileMD5) { areHashesEqual ->
+            if (areHashesEqual) {
+                // The file is already up to date, so directly call the reading function
+                readCsvFile(localFile, markerList)
+            } else {
+                // Delete the old file
+                if (localFile.exists()) {
+                    localFile.delete()
+                }
+
+                // Download the new file
+                storageRef.getFile(localFile).addOnSuccessListener {
+                    Log.e("firebase ", "Local temp file created: $localFile")
+                    // updateDb(timestamp, localFile.toString(), position);
+                    readCsvFile(localFile, markerList)
+                }.addOnFailureListener { exception ->
+                    Log.e("firebase ", "Local temp file not created: $exception")
+                }
+            }
+        }
+    }
+
+
+    private fun compareMD5Hash(storageRef: StorageReference, localFileMD5: String, callback: (Boolean) -> Unit) {
+        val stream = ByteArrayOutputStream()
+        storageRef.metadata.addOnSuccessListener { metadata ->
+            val remoteMD5Hash = metadata.md5Hash
+            val areHashesEqual = remoteMD5Hash.equals(localFileMD5, ignoreCase = true)
+            stream.close()
+            callback(areHashesEqual)
+        }.addOnFailureListener {
+            stream.close()
+            callback(false)
+        }
+    }
+
+
+
+
+    private fun readCsvFile(file: File, markerList: MutableList<Marker>): MutableList<Marker> {
         var markerListCopy = markerList
         var csvLines = ""
         try {
-            val reader = CSVReader(InputStreamReader(resources.openRawResource(file))) // Specify asset file name
+            val fileInputStream = FileInputStream(file)
+            val reader = CSVReader(InputStreamReader(fileInputStream))
             var nextLine: Array<String>?
-            nextLine = reader.readNext();
+            nextLine = reader.readNext()
             if (nextLine[1] == "route_id") {
                 while (reader.readNext().also { nextLine = it } != null) {
                     // nextLine[] is an array of values from the line
@@ -172,12 +247,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             reader.close()
-        } catch (e: Exception) {
+            fileInputStream.close()
+        } catch (e: FileNotFoundException) {
             e.printStackTrace()
             Toast.makeText(this, "The specified file was not found", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Different error, mabye can't add rat?", Toast.LENGTH_SHORT).show()
         }
         return markerListCopy
     }
+
+
 
     private fun createVehicleObject(mpkLine: String): Vehicle {
         val values = mpkLine.split(",")
