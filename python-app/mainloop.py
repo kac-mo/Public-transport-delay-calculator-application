@@ -190,7 +190,6 @@ def create_line_brigade_df(records, current_day_time):
                 # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
                 time_difference = abs(current_day_time - update_time)
                 if time_difference.seconds < 300:
-                    print('works')
                     # Pobieram id brygady - unikalne ID per pojazd per linia
                     elem['brigade_id'] = elem['Brygada'][-2:]
                     # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
@@ -222,9 +221,13 @@ current_service_id = week_day_service_id_dict[current_week_day]
 
 print('Getting data from schedules, MPK API...')
 stop_times_df = pd.read_csv("data/stop_times.txt")
+print(1)
 trips_df = pd.read_csv("data/trips.txt")
+print(2)
 stops_df = pd.read_csv("data/stops.txt")
+print(3)
 records = mpk.get_data()
+print(1)
 print('Matching data & attempting to create .csv...')
 line_brigade_df = create_line_brigade_df(records, current_day_time)
 if len(line_brigade_df) > 0:
