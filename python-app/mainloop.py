@@ -3,9 +3,9 @@ from geopy import distance
 from datetime import datetime, timedelta
 import getmpkdata as mpk
 import textmanipulations as tedit
-import firebase_service as FB
 
 def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_id_time_windows_df, trip_ids_list, stops_ids_list, stops_times_list, current_service_id, current_day_time):
+    brigade_ids = []
     route_ids = []
     directions = []
     current_lat = []
@@ -44,10 +44,10 @@ def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_id_time_windows_
 
                     # Jeśli możliwych tripów było > 1, wówczas dokonuję weryfikacji
                     if len(possible_trips_list) > 1:
-                        try:
+                        # try:
                             possible_trips_list = solve_double_possible_paths(
                                 possible_trips_list, trip_id_time_windows_df, stops_df, trips_df, current_vehicle_lat, current_vehicle_lon)
-                        except:
+                        # except:
                             print(
                                 "- - - -\nUNRESOLVED ERROR, FLIPPING A COIN ON VEHICLE MATCH...")
                             possible_trips_list = [possible_trips_list[0]]
@@ -58,12 +58,13 @@ def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_id_time_windows_
                         temp_df.loc[(temp_df['trip_id'] == possible_trips_list[0][0])].iloc[0, 3])
                     current_lat.append(current_vehicle_lat)
                     current_lon.append(current_vehicle_lon)
+                    brigade_ids.append(line_brigade_df['brigade_id'][i])
                     stops_ids.append(possible_trips_list[0][6])
                     stops_times.append(possible_trips_list[0][7])
         except:
             pass
 
-    return (route_ids, directions, current_lat, current_lon, stops_ids, stops_times)
+    return (route_ids, directions, current_lat, current_lon, stops_ids, stops_times, brigade_ids)
 
 def solve_double_possible_paths(possible_trips_list, trip_id_time_windows_df, stops_df, current_lat, current_lon):
     stops1 = trip_id_time_windows_df.loc[(trip_id_time_windows_df['trip_id'] == possible_trips_list[0][0])].iloc[0, 4].replace(
@@ -163,17 +164,18 @@ def create_vehicles_data_csv(stop_times_df, line_brigade_df, trips_df, stops_df,
     # trip_id_time_windows_df.to_csv(
     #     'data/data.csv', encoding='utf-8-sig')
 
-    route_ids, directions, current_lat, current_lon, stops_ids, stops_times = get_vehicles_data(
+    route_ids, directions, current_lat, current_lon, stops_ids, stops_times, brigade_ids = get_vehicles_data(
         line_brigade_df, trips_df, stops_df, trip_id_time_windows_df, trip_id_list, trip_stop_ids, trip_stop_times, current_service_id, current_day_time)
 
     # Co potrzebujemy w CSV? Route_ID, Kierunek, pozycja, rozkład jazdy
-    present_data = {'route_id': route_ids, 'direction': directions,
+    present_data = {'brigade_id': brigade_ids, 'route_id': route_ids, 'direction': directions,
             'position_lat': current_lat, 'position_lon': current_lon, 'stops_ids': stops_ids, 'stops_times': stops_times}
     present_data_df = pd.DataFrame(present_data)
     present_data_df.to_csv(
-        'data/vehicles_data.csv', encoding='utf-8-sig')
+        'data/vehicles_data.csv', encoding='utf-8-sig', index=False)
 
     print("File creation completed")
+    return present_data_df
 
 def create_line_brigade_df(records, current_day_time):
     brigade_id_list = []
@@ -189,7 +191,7 @@ def create_line_brigade_df(records, current_day_time):
                     elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
                 # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
                 time_difference = abs(current_day_time - update_time)
-                if time_difference.seconds < 300:
+                if time_difference.seconds < 300 or time_difference.seconds >= 300:
                     # Pobieram id brygady - unikalne ID per pojazd per linia
                     elem['brigade_id'] = elem['Brygada'][-2:]
                     # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
@@ -208,30 +210,32 @@ def create_line_brigade_df(records, current_day_time):
     # Nowy dataframe z numerem linii i id brygady
     return (pd.DataFrame(line_brigade_data))
 
-print('Getting MPK schedules...')
-mpk.get_schedules('https://www.wroclaw.pl/open-data/87b09b32-f076-4475-8ec9-6020ed1f9ac0/OtwartyWroclaw_rozklad_jazdy_GTFS.zip', './data/')
-print('Creating time-related variables...')
-current_day_time = datetime.now()
-# Dzień tygodnia jako int // 0 - Monday, 6 - Sunday
-current_week_day = datetime.weekday(current_day_time)
-# service_id: {3 : sob, 4 : nie, 6 : pon/wt/sr/czw, 8 : pt}
-week_day_service_id_dict = {0: 6, 1: 6, 2: 6, 3: 6, 4: 8, 5: 3, 6: 4}
-# Service id do matchowania odpowiedniego trip id
-current_service_id = week_day_service_id_dict[current_week_day]
+def run():
+    print('Getting MPK schedules...')
+    mpk.get_schedules('https://www.wroclaw.pl/open-data/87b09b32-f076-4475-8ec9-6020ed1f9ac0/OtwartyWroclaw_rozklad_jazdy_GTFS.zip', './data/')
+    print('Creating time-related variables...')
+    current_day_time = datetime.now()
+    # Dzień tygodnia jako int // 0 - Monday, 6 - Sunday
+    current_week_day = datetime.weekday(current_day_time)
+    # service_id: {3 : sob, 4 : nie, 6 : pon/wt/sr/czw, 8 : pt}
+    week_day_service_id_dict = {0: 6, 1: 6, 2: 6, 3: 6, 4: 8, 5: 3, 6: 4}
+    # Service id do matchowania odpowiedniego trip id
+    current_service_id = week_day_service_id_dict[current_week_day]
 
-print('Getting data from schedules, MPK API...')
-stop_times_df = pd.read_csv("data/stop_times.txt")
-print(1)
-trips_df = pd.read_csv("data/trips.txt")
-print(2)
-stops_df = pd.read_csv("data/stops.txt")
-print(3)
-records = mpk.get_data()
-print(1)
-print('Matching data & attempting to create .csv...')
-line_brigade_df = create_line_brigade_df(records, current_day_time)
-if len(line_brigade_df) > 0:
-    create_vehicles_data_csv(stop_times_df, line_brigade_df, trips_df, stops_df, current_service_id, current_day_time)
-    FB.upload("data/vehicles_data.csv")
-else:
-    print('API is broken... :(')
+    print('Getting data from schedules, MPK API...')
+    stop_times_df = pd.read_csv("data/stop_times.txt")
+    print(1)
+    trips_df = pd.read_csv("data/trips.txt")
+    print(2)
+    stops_df = pd.read_csv("data/stops.txt")
+    print(3)
+    records = mpk.get_data()
+    print(1)
+    print('Matching data & attempting to create .csv...')
+    line_brigade_df = create_line_brigade_df(records, current_day_time)
+    if len(line_brigade_df) > 0:
+        vehicles_data = create_vehicles_data_csv(stop_times_df, line_brigade_df, trips_df, stops_df, current_service_id, current_day_time)
+        return(vehicles_data, True)
+    else:
+        print('API is broken... :(')
+        return(False, False)
