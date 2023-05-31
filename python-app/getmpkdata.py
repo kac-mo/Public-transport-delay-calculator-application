@@ -47,5 +47,4 @@ def get_schedules(url, destination='.'):
 
     response = session.get(url)
     zipfile = ZipFile(BytesIO(response.content))
->>>>>>> 0daeb35716c08af2b39696c466280c80a5646b7e
     zipfile.extractall(path=destination)

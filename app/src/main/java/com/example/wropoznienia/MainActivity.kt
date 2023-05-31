@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         mapController.setCenter(startPoint)
         var stopList = mutableListOf<Marker>()
         var vehicleList = mutableListOf<Marker>()
+        var vehicleListCopy = mutableListOf<Marker>()
         map!!.setMinZoomLevel(12.0)
         map!!.setMaxZoomLevel(18.0)
 
@@ -85,10 +86,9 @@ class MainActivity : AppCompatActivity() {
         //stopList = readCsvFile(R.raw.stops, stopList)
         //vehicleList = readCsvFile("/storage/emulated/0/Android/data/com.example.wropoznienia/files/file_test/vehicles_data.csv", vehicleList)
 
-        /***
         GlobalScope.launch {
             while (isActive) {
-                delay(30_000)
+                delay(10_000)
                 /***
                 if (map!!.zoomLevel < 14) {
                     for(stop in stopList) {
@@ -103,15 +103,23 @@ class MainActivity : AppCompatActivity() {
                     map!!.invalidate()
                 }
                 ***/
-                for (vehicle in vehicleList) {
-                    map!!.overlays.remove(vehicle)
+                if (vehicleListCopy.isEmpty()) {
+                    downloadFile(vehicleListCopy)
+                    for (vehicle in vehicleList) {
+                        map!!.overlays.remove(vehicle)
+                    }
+                    map!!.invalidate()
+                    vehicleList.clear()
+                } else if (vehicleList.isEmpty()) {
+                    downloadFile(vehicleList)
+                    for (vehicle in vehicleListCopy) {
+                        map!!.overlays.remove(vehicle)
+                    }
+                    map!!.invalidate()
+                    vehicleListCopy.clear()
                 }
-                vehicleList.clear()
-                map!!.invalidate()
-                downloadFile(vehicleList)
             }
         }
-        ***/
     }
 
     public override fun onResume() {
