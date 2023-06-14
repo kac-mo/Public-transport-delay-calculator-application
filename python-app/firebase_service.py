@@ -1,15 +1,7 @@
 from firebase_admin import storage
-<<<<<<< HEAD
-
-# Init firebase with your credentials
-def upload(file):
-
-    # Put your local file path 
-=======
 import pandas as pd
 
 def upload_file_to_storage(filename):
->>>>>>> d0fbcf65fac8304e7a8b1bed17500f95e858b421
     bucket = storage.bucket()
     blob = bucket.blob(filename.split('/')[-1])
     blob.upload_from_filename(filename)
