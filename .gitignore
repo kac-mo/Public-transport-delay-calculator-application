@@ -14,4 +14,8 @@
 .cxx
 local.properties
 /data/test.xlsx
+<<<<<<< HEAD
 /app/src/main/res/raw/vehicles_data.csv
+=======
+/python-app/firebaseadminkey.json
+>>>>>>> d0fbcf65fac8304e7a8b1bed17500f95e858b421

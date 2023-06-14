@@ -20,6 +20,7 @@ def get_data():
     session.mount('https://', adapter)
 
     url = 'https://www.wroclaw.pl/open-data/api/action/datastore_search?resource_id=17308285-3977-42f7-81b7-fdd168c210a2'
+<<<<<<< HEAD
     with session.get(url) as response:
         print(4.1)
         # time.sleep(1)
@@ -47,4 +48,21 @@ def get_schedules(url, destination='.'):
 
     response = session.get(url)
     zipfile = ZipFile(BytesIO(response.content))
+=======
+    obj_dict = requests.get(url).json()
+    # Liczba stron wyszukiwania
+    cycles = math.ceil(obj_dict['result']['total']/100)
+    records = obj_dict['result']['records']  # Lista pojazdów MPK
+
+    for i in range(1, cycles):
+        url = f'https://www.wroclaw.pl/open-data/api/action/datastore_search?offset={i*100}&resource_id=17308285-3977-42f7-81b7-fdd168c210a2'
+        obj_dict_temp = requests.get(url).json()
+        records += obj_dict_temp['result']['records']
+
+    return records
+
+def get_schedules(url, destination='.'):
+    http_response = requests.get(url, stream=True)
+    zipfile = ZipFile(BytesIO(http_response.content))
+>>>>>>> d0fbcf65fac8304e7a8b1bed17500f95e858b421
     zipfile.extractall(path=destination)
