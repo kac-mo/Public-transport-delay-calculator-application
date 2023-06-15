@@ -1,6 +1,7 @@
 package com.example.wropoznienia
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -14,13 +15,14 @@ import java.io.*
 class FileRead {
 
     fun readCsvFile(
-        context: Context, // Added Context parameter
+        context: Context,
         file: File,
-        markerList: MutableList<Marker>,
-        googleMap: GoogleMap
-    ): MutableList<Marker> {
-        var markerListCopy = mutableListOf<Marker>()
-        markerListCopy.addAll(markerList)
+        vehicleMap: HashMap<String, Marker>,
+        googleMap: GoogleMap,
+        callback: (HashMap<String, Marker>) -> Unit
+    ) {
+        var vehicleMapCopy = HashMap<String, Marker>()
+        vehicleMapCopy.putAll(vehicleMap)
         var csvLines = ""
         try {
             val fileInputStream = FileInputStream(file)
@@ -31,7 +33,7 @@ class FileRead {
                 // nextLine[] is an array of values from the line
                 csvLines = nextLine!!.joinToString(separator = ",")
                 try {
-                    markerListCopy = addVehicleToMap(markerListCopy, csvLines, googleMap)
+                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, csvLines, googleMap, context)
                 } catch (e: Exception) {
                     e.printStackTrace()
                     Toast.makeText(context, "Different error, maybe can't add rat?", Toast.LENGTH_SHORT).show()
@@ -44,45 +46,30 @@ class FileRead {
             e.printStackTrace()
             Toast.makeText(context, "The specified file was not found", Toast.LENGTH_SHORT).show()
         }
-        return markerListCopy
+        // Invoke the callback with the updated map
+        callback(vehicleMapCopy)
     }
 
-    private fun addVehicleToMap(vehicleList: MutableList<Marker>, mpkLine: String, googleMap: GoogleMap): MutableList<Marker> {
+
+    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, mpkLine: String, googleMap: GoogleMap, context: Context): HashMap<String, Marker> {
         val values = mpkLine.split(",")
         var delayMessage = " nie wiem ile :D"
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
-        var vehicleNotAdded = true
-        if (!values[8].equals("NP")) {
+        if (values[8] != "NP") {
             delayMessage = " Opóźnienie:" + values[8] + "s"
         }
-        if (vehicleList.isEmpty()) {
+        if (vehicleMap.containsKey(values[0])) {
+            vehicleMap[values[0]]?.position = transportMpkPosition
+            vehicleMap[values[0]]?.snippet = delayMessage
+        } else {
             val markerName: Marker = googleMap.addMarker(
                 MarkerOptions()
                     .position(transportMpkPosition)
                     .title("Szczur - linia " + values[2])
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker))
                     .snippet("Kierunek: " + values[3] + delayMessage))
-            markerName.tag = values[0]
-            vehicleList.add(markerName)
+            vehicleMap[values[0]] = markerName
         }
-        for (marker in vehicleList) {
-            if (marker.tag?.equals(values[0]) == true) {
-                marker.setPosition(transportMpkPosition)
-                marker.setSnippet("Kierunek: " + values[3] + delayMessage)
-                vehicleNotAdded = false
-                break
-            }
-        }
-        if (vehicleNotAdded) {
-            val markerName: Marker = googleMap.addMarker(
-                MarkerOptions()
-                    .position(transportMpkPosition)
-                    .title("Szczur - linia " + values[2])
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker))
-                    .snippet("Kierunek: " + values[3] + delayMessage))
-            markerName.tag = values[0]
-            vehicleList.add(markerName)
-        }
-        return vehicleList
+        return vehicleMap
     }
 }

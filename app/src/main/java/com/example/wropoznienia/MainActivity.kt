@@ -2,6 +2,7 @@ package com.example.wropoznienia
 
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -28,10 +29,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(51.1256586, 17.006079), 12.0f))
-        var vehicleList = mutableListOf<Marker>()
+        var vehicleMap = HashMap<String, Marker>()
         val fileDownload = FileDownload()
         val context = this
-        var vehicleListCopy = mutableListOf<Marker>()
 
 //        fileDownload.getFromFirestore(vehicleList, googleMap, db)
 //
@@ -44,21 +44,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 //            }
 //        }
 
-        fileDownload.downloadFile(vehicleList, googleMap, application, context)
+        fileDownload.downloadFile(vehicleMap, googleMap, application, context) { updatedVehicleMap ->
+            vehicleMap = updatedVehicleMap
+        }
 
         GlobalScope.launch {
             while (isActive) {
                 delay(5_000)
-                if (vehicleListCopy.isEmpty()) {
-                    runOnUiThread {
-                        vehicleListCopy = fileDownload.downloadFile(vehicleListCopy, googleMap, application, context)
+                runOnUiThread {
+                    fileDownload.downloadFile(vehicleMap, googleMap, application, context) { updatedVehicleMap ->
+                        vehicleMap = updatedVehicleMap
                     }
-                    vehicleList.clear()
-                } else if (vehicleList.isEmpty()) {
-                    runOnUiThread {
-                        vehicleList = fileDownload.downloadFile(vehicleList, googleMap, application, context)
-                    }
-                    vehicleListCopy.clear()
                 }
             }
         }
