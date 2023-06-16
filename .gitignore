@@ -14,7 +14,12 @@
 .cxx
 local.properties
 /data/test.xlsx
+<<<<<<< HEAD
 /app/src/main/res/raw/vehicles_data.csv
 /python-app/firebaseadminkey.json
 /python-app
 .gitignore
+=======
+/python-app/firebaseadminkey.json
+/python-app/data
+>>>>>>> 4a5efea6a15e6eba6b52baef3a6a6600afc37f95
