@@ -13,6 +13,7 @@ import java.io.*
 import kotlin.math.roundToInt
 
 var pastEnteredText = ""
+
 class FileRead {
 
     fun readCsvFile(
@@ -39,10 +40,11 @@ class FileRead {
                 csvLines = nextLine!!.joinToString(separator = ",")
                 val values = csvLines.split(",")
                 try {
-                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, stopMap, values, googleMap, context, enteredText)
+                    val resultMap = addVehicleToMap(vehicleMapCopy, stopMap, values, googleMap, context, enteredText)
+                    vehicleMapCopy = resultMap.vehicleMap
                     if (enteredText != "") {
-                        sumLineDelay += values[12].toDouble().roundToInt()
-                        vehicleCount += 1
+                        sumLineDelay += resultMap.delayValue
+                        vehicleCount += resultMap.count
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -70,8 +72,11 @@ class FileRead {
         callback(vehicleMapCopy)
     }
 
+    data class VehicleMapResult(val vehicleMap: HashMap<String, Marker>, val delayValue: Int, val count: Int)
 
-    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, stopMap: HashMap<String, Marker>, values: List<String>, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
+    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, stopMap: HashMap<String, Marker>, values: List<String>, googleMap: GoogleMap, context: Context, enteredText: String): VehicleMapResult {
+        var delay = 0
+        var count = 0
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
         var delayMessage = " Opóźnienie: " + values[12].toDouble().roundToInt() + " s"
         if (vehicleMap.containsKey(values[0])) {
@@ -95,6 +100,8 @@ class FileRead {
                 }
             } else {
                 vehicleMap[values[0]]?.isVisible = true
+                delay = values[12].toFloat().roundToInt()
+                count = 1
                 val stopsId = values[6].split("/")
                 for (stopId in stopsId) {
                     stopMap[stopId]?.isVisible = true
@@ -113,7 +120,7 @@ class FileRead {
             }
             pastEnteredText = enteredText
         }
-        return vehicleMap
+        return VehicleMapResult(vehicleMap, delay, count)
     }
 
     fun readTxtFile(
