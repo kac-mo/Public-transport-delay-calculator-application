@@ -18,6 +18,7 @@ class FileRead {
         context: Context,
         file: File,
         vehicleMap: HashMap<String, Marker>,
+        stopMap: HashMap<String, Marker>,
         googleMap: GoogleMap,
         enteredText: String,
         callback: (HashMap<String, Marker>) -> Unit
@@ -34,7 +35,7 @@ class FileRead {
                 // nextLine[] is an array of values from the line
                 csvLines = nextLine!!.joinToString(separator = ",")
                 try {
-                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, csvLines, googleMap, context, enteredText)
+                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, stopMap, csvLines, googleMap, context, enteredText)
                 } catch (e: Exception) {
                     e.printStackTrace()
                     Toast.makeText(context, "Different error, maybe can't add rat?", Toast.LENGTH_SHORT).show()
@@ -52,7 +53,7 @@ class FileRead {
     }
 
 
-    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, mpkLine: String, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
+    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, stopMap: HashMap<String, Marker>,mpkLine: String, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
         val values = mpkLine.split(",")
         var delayMessage = " nie wiem ile :D"
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
@@ -78,10 +79,62 @@ class FileRead {
                 }
             } else {
                 vehicleMap[values[0]]?.isVisible = true
+                val stopsId = values[6].split("/")
+                for (stopId in stopsId) {
+                    stopMap[stopId]?.isVisible = true
+                }
             }
         } else {
             vehicleMap[values[0]]?.isVisible = true
+            for ((id, stop) in stopMap) {
+                stop.isVisible = false
+            }
         }
         return vehicleMap
+    }
+
+    fun readTxtFile(
+        context: Context,
+        file: File,
+        stopMap: HashMap<String, Marker>,
+        googleMap: GoogleMap,
+        enteredText: String,
+        callback: (HashMap<String, Marker>) -> Unit
+    ) {
+        var stopMapCopy = HashMap<String, Marker>()
+        stopMapCopy.putAll(stopMap)
+        try {
+            val fileInputStream = FileInputStream(file)
+            val reader = BufferedReader(InputStreamReader(fileInputStream))
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                try {
+                    stopMapCopy = addStopToMap(stopMapCopy, line!!, googleMap, context, enteredText)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "Different error, maybe can't add cheese?", Toast.LENGTH_SHORT).show()
+                }
+            }
+            reader.close()
+            fileInputStream.close()
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
+            Toast.makeText(context, "The specified file was not found", Toast.LENGTH_SHORT).show()
+        }
+        // Invoke the callback with the updated map
+        callback(stopMapCopy)
+    }
+
+    private fun addStopToMap(stopMap: HashMap<String, Marker>, mpkLine: String, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
+        val values = mpkLine.split(",")
+        val stopPosition = LatLng(values[3].toDouble(), values[4].toDouble())
+        val markerName: Marker = googleMap.addMarker(
+            MarkerOptions()
+                .position(stopPosition)
+                .title(values[2])
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker2)))
+        stopMap[values[0]] = markerName
+        stopMap[values[0]]?.isVisible = false
+        return stopMap
     }
 }

@@ -23,39 +23,47 @@ class FileDownload {
     private val fileRead = FileRead()
 
     fun downloadFile(
-        vehicleMap: HashMap<String, Marker>,
+        markerMap: HashMap<String, Marker>,
+        stopMap: HashMap<String, Marker>,
         googleMap: GoogleMap,
         application: Application,
         context: Context,
         enteredText: String,
+        fileName: String,
         callback: (HashMap<String, Marker>) -> Unit
     ): HashMap<String, Marker> {
         val storage = FirebaseStorage.getInstance()
-        val storageRef = storage.reference.child("vehicles_data.csv")
-        val vehicleMapCopy = HashMap<String, Marker>()
-        vehicleMapCopy.putAll(vehicleMap)
+        val storageRef = storage.reference.child(fileName)
+        val markerMapCopy = HashMap<String, Marker>()
+        markerMapCopy.putAll(markerMap)
 
         val rootPath: File = File(application.getExternalFilesDir(null), "file_test")
         if (!rootPath.exists()) {
             rootPath.mkdirs()
         }
-        val localFile = File(rootPath, "vehicles_data.csv")
+        val localFile = File(rootPath, fileName)
         if (localFile.exists()) {
             localFile.delete()
         }
         storageRef.getFile(localFile).addOnSuccessListener {
             Log.e("firebase ", "Local temp file created: $localFile")
-            fileRead.readCsvFile(context, localFile, vehicleMapCopy, googleMap, enteredText) { vehicleMapCopy ->
-                // Invoke the callback with the updated map
-                callback(vehicleMapCopy)
+            if (fileName == "vehicles_data.csv") {
+                fileRead.readCsvFile(context, localFile, markerMapCopy, stopMap, googleMap, enteredText) { markerMapCopy ->
+                    // Invoke the callback with the updated map
+                    callback(markerMapCopy)
+                }
+            } else if (fileName == "stops.txt") {
+                fileRead.readTxtFile(context, localFile, markerMapCopy, googleMap, enteredText) { markerMapCopy ->
+                    callback(markerMapCopy)
+                }
             }
         }.addOnFailureListener { exception ->
             Log.e("firebase ", "Local temp file not created: $exception")
             // Handle the failure case if needed
             // For example, you can call the callback with the original vehicleMapCopy
-            callback(vehicleMapCopy)
+            callback(markerMapCopy)
         }
-        return vehicleMapCopy
+        return markerMapCopy
     }
 
 

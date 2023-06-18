@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(51.1256586, 17.006079), 12.0f))
         var vehicleMap = HashMap<String, Marker>()
+        var stopMap = HashMap<String, Marker>()
         val fileDownload = FileDownload()
         val context = this
 
@@ -57,8 +58,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             textInputDialog.show()
         }
 
+        fileDownload.downloadFile(stopMap, stopMap, googleMap, application, context, enteredText, "stops.txt") { updatedVehicleMap ->
+            stopMap = updatedVehicleMap
+        }
 
-        fileDownload.downloadFile(vehicleMap, googleMap, application, context, enteredText) { updatedVehicleMap ->
+        fileDownload.downloadFile(vehicleMap, stopMap, googleMap, application, context, enteredText, "vehicles_data.csv") { updatedVehicleMap ->
             vehicleMap = updatedVehicleMap
         }
 
@@ -66,7 +70,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             while (isActive) {
                 delay(5_000)
                 runOnUiThread {
-                    fileDownload.downloadFile(vehicleMap, googleMap, application, context, enteredText) { updatedVehicleMap ->
+                    fileDownload.downloadFile(vehicleMap, stopMap, googleMap, application, context, enteredText, "vehicles_data.csv") { updatedVehicleMap ->
                         vehicleMap = updatedVehicleMap
                     }
                 }
