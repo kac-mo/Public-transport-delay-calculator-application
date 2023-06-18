@@ -3,8 +3,10 @@ package com.example.wropoznienia
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -21,8 +23,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
     private val REQUEST_PERMISSIONS_REQUEST_CODE = 1
 
     private lateinit var textInputDialog: AlertDialog
@@ -34,11 +37,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         initTextInputDialog()
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map_fragment) as? SupportMapFragment
         mapFragment?.getMapAsync(this)
+
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
+        googleMap.setInfoWindowAdapter(this) // Set the custom info window adapter
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(51.1256586, 17.006079), 12.0f))
         var vehicleMap = HashMap<String, Marker>()
+        var stopMap = HashMap<String, Marker>()
         val fileDownload = FileDownload()
         val context = this
 
@@ -57,17 +63,69 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             textInputDialog.show()
         }
 
+        fileDownload.downloadFile(stopMap, stopMap, googleMap, application, context, enteredText, "stops.txt") { updatedVehicleMap ->
+            stopMap = updatedVehicleMap
+        }
 
-        fileDownload.downloadFile(vehicleMap, googleMap, application, context, enteredText) { updatedVehicleMap ->
+        fileDownload.downloadFile(vehicleMap, stopMap, googleMap, application, context, enteredText, "vehicles_data.csv") { updatedVehicleMap ->
             vehicleMap = updatedVehicleMap
+        }
+
+        googleMap.setOnMarkerClickListener { marker ->
+            if (stopMap.containsValue(marker)) {
+                var newSnippet = "" //"Nadjeżdżające:\n"
+                var totalDelay = 0
+                var vehicleComingToStopCounter = 0
+                for ((key, vehicle) in vehicleMap) {
+                    val vehicleString = vehicle.tag as String
+                    val vehicleInfo = vehicleString.split("&")
+                    val stopsId = vehicleInfo[0].split("/")
+                    val stopsNextStop = vehicleInfo[1]
+                    val vehicleDelay = vehicleInfo[2].toDouble().roundToInt()
+                    if (stopsId.contains(marker.tag)) {
+                        if (stopsId.indexOf(marker.tag) >= stopsId.indexOf(stopsNextStop)) {
+                            //newSnippet += vehicle.title + " " + vehicle.snippet + "\n"
+                            totalDelay += vehicleDelay
+                            vehicleComingToStopCounter += 1
+                        }
+                    }
+                }
+                newSnippet += "Całkowite opóźnienie nadjeżdżających pojazdów: " + totalDelay + "s\n"
+                if (vehicleComingToStopCounter == 0) {
+                    vehicleComingToStopCounter = 1
+                }
+                newSnippet += "Średnie opóźnienie nadjeżdżających pojazdów: " + (totalDelay/vehicleComingToStopCounter) + "s\n"
+                marker.snippet = newSnippet
+            }
+            marker.showInfoWindow()
+
+            // Return true to indicate that the event has been consumed
+            true
         }
 
         GlobalScope.launch {
             while (isActive) {
                 delay(5_000)
                 runOnUiThread {
-                    fileDownload.downloadFile(vehicleMap, googleMap, application, context, enteredText) { updatedVehicleMap ->
+                    fileDownload.downloadFile(
+                        vehicleMap,
+                        stopMap,
+                        googleMap,
+                        application,
+                        context,
+                        enteredText,
+                        "vehicles_data.csv"
+                    ) { updatedVehicleMap ->
                         vehicleMap = updatedVehicleMap
+                    }
+                    if (enteredText == "" && googleMap.cameraPosition.zoom > 15) {
+                        for ((key, marker) in stopMap) {
+                            marker.isVisible = true
+                        }
+                    } else if (enteredText == "" && googleMap.cameraPosition.zoom <= 15) {
+                        for ((key, marker) in stopMap) {
+                            marker.isVisible = false
+                        }
                     }
                 }
             }
@@ -83,7 +141,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun initTextInputDialog() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Enter Text")
+        builder.setTitle("Wpisz numer lub nazwę linii")
 
         val input = EditText(this)
         builder.setView(input)
@@ -119,6 +177,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 REQUEST_PERMISSIONS_REQUEST_CODE
             )
         }
+    }
+
+    override fun getInfoWindow(marker: Marker): View? {
+        // Inflate your custom info window layout
+        val view = layoutInflater.inflate(R.layout.custom_info_window, null)
+
+        // Populate the views in your custom info window layout
+        val titleTextView = view.findViewById<TextView>(R.id.titleTextView)
+        val descriptionTextView = view.findViewById<TextView>(R.id.descriptionTextView)
+
+        titleTextView.text = marker.title
+        descriptionTextView.text = marker.snippet
+
+        return view
+    }
+
+    override fun getInfoContents(marker: Marker): View? {
+        // Return null to use the default info window
+        return null
     }
 
 //    private fun requestPermissionsIfNecessary(permissions: Array<String>) {
