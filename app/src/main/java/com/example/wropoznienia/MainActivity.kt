@@ -141,7 +141,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
     private fun initTextInputDialog() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Enter Text")
+        builder.setTitle("Wpisz numer lub nazwę linii")
 
         val input = EditText(this)
         builder.setView(input)
