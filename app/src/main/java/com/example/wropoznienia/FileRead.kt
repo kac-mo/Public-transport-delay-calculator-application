@@ -12,7 +12,7 @@ import com.opencsv.CSVReader
 import java.io.*
 import kotlin.math.roundToInt
 
-
+var pastEnteredText = ""
 class FileRead {
 
     fun readCsvFile(
@@ -100,8 +100,18 @@ class FileRead {
                     stopMap[stopId]?.isVisible = true
                 }
             }
+            if (enteredText != pastEnteredText) {
+                for ((_, stop) in stopMap) {
+                    stop.isVisible = false
+                }
+                pastEnteredText = enteredText
+            }
         } else {
             vehicleMap[values[0]]?.isVisible = true
+            for ((_, stop) in stopMap) {
+                stop.isVisible = false
+            }
+            pastEnteredText = enteredText
         }
         return vehicleMap
     }
