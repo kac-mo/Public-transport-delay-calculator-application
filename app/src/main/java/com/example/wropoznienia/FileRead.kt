@@ -10,6 +10,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.opencsv.CSVReader
 import java.io.*
+import kotlin.math.roundToInt
 
 
 class FileRead {
@@ -58,7 +59,7 @@ class FileRead {
         var delayMessage = " nie wiem ile :D"
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
         if (values[8] != "NP") {
-            delayMessage = " Opóźnienie:" + values[12] + "s"
+            delayMessage = " Opóźnienie:" + values[12].toDouble().roundToInt() + "s"
         }
         if (vehicleMap.containsKey(values[0])) {
             vehicleMap[values[0]]?.position = transportMpkPosition

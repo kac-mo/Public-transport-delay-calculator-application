@@ -23,6 +23,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
     private val REQUEST_PERMISSIONS_REQUEST_CODE = 1
@@ -73,27 +74,27 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         googleMap.setOnMarkerClickListener { marker ->
             if (stopMap.containsValue(marker)) {
                 var newSnippet = "Nadjeżdżające:\n"
-                var totalDelay = 0.0
+                var totalDelay = 0
                 var vehicleComingToStopCounter = 0
                 for ((key, vehicle) in vehicleMap) {
                     val vehicleString = vehicle.tag as String
                     val vehicleInfo = vehicleString.split("&")
                     val stopsId = vehicleInfo[0].split("/")
                     val stopsNextStop = vehicleInfo[1]
-                    val vehicleDelay = vehicleInfo[2].toDouble()
+                    val vehicleDelay = vehicleInfo[2].toDouble().roundToInt()
                     if (stopsId.contains(marker.tag)) {
                         if (stopsId.indexOf(marker.tag) >= stopsId.indexOf(stopsNextStop)) {
                             newSnippet += vehicle.title + " " + vehicle.snippet + "\n"
+                            totalDelay += vehicleDelay
+                            vehicleComingToStopCounter += 1
                         }
-                        totalDelay += vehicleDelay
-                        vehicleComingToStopCounter += 1
                     }
                 }
-                newSnippet += "Całkowite opóźnienie nadjeżdżających pojazdów: " + totalDelay + "\n"
+                newSnippet += "Całkowite opóźnienie nadjeżdżających pojazdów: " + totalDelay + "s\n"
                 if (vehicleComingToStopCounter == 0) {
                     vehicleComingToStopCounter = 1
                 }
-                newSnippet += "Średnie opóźnienie nadjeżdżających pojazdów: " + totalDelay/vehicleComingToStopCounter + "\n"
+                newSnippet += "Średnie opóźnienie nadjeżdżających pojazdów: " + (totalDelay/vehicleComingToStopCounter) + "s\n"
                 marker.snippet = newSnippet
             }
             marker.showInfoWindow()
