@@ -132,7 +132,8 @@ class FileRead {
             MarkerOptions()
                 .position(stopPosition)
                 .title(values[2])
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker2)))
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker2))
+                .snippet("Akapit test\ndziała?"))
         stopMap[values[0]] = markerName
         stopMap[values[0]]?.isVisible = false
         return stopMap

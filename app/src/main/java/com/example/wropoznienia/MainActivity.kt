@@ -3,8 +3,10 @@ package com.example.wropoznienia
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -22,7 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
     private val REQUEST_PERMISSIONS_REQUEST_CODE = 1
 
     private lateinit var textInputDialog: AlertDialog
@@ -34,9 +36,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         initTextInputDialog()
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map_fragment) as? SupportMapFragment
         mapFragment?.getMapAsync(this)
+
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
+        googleMap.setInfoWindowAdapter(this) // Set the custom info window adapter
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(51.1256586, 17.006079), 12.0f))
         var vehicleMap = HashMap<String, Marker>()
         var stopMap = HashMap<String, Marker>()
@@ -123,6 +127,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 REQUEST_PERMISSIONS_REQUEST_CODE
             )
         }
+    }
+
+    override fun getInfoWindow(marker: Marker): View? {
+        // Inflate your custom info window layout
+        val view = layoutInflater.inflate(R.layout.custom_info_window, null)
+
+        // Populate the views in your custom info window layout
+        val titleTextView = view.findViewById<TextView>(R.id.titleTextView)
+        val descriptionTextView = view.findViewById<TextView>(R.id.descriptionTextView)
+
+        titleTextView.text = marker.title
+        descriptionTextView.text = marker.snippet
+
+        return view
+    }
+
+    override fun getInfoContents(marker: Marker): View? {
+        // Return null to use the default info window
+        return null
     }
 
 //    private fun requestPermissionsIfNecessary(permissions: Array<String>) {
