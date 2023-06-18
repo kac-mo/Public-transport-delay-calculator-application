@@ -89,7 +89,7 @@ class FileRead {
             vehicleMap[values[0]] = markerName
         }
         if (enteredText != "") {
-            if (!values[0].contains(enteredText+"_", ignoreCase = true)) {
+            if (values[2].lowercase() != enteredText.lowercase()) {
                 if (vehicleMap.containsKey(values[0])) {
                     vehicleMap[values[0]]?.isVisible = false
                 }
