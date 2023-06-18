@@ -58,11 +58,12 @@ class FileRead {
         var delayMessage = " nie wiem ile :D"
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
         if (values[8] != "NP") {
-            delayMessage = " Opóźnienie:" + values[8] + "s"
+            delayMessage = " Opóźnienie:" + values[12] + "s"
         }
         if (vehicleMap.containsKey(values[0])) {
             vehicleMap[values[0]]?.position = transportMpkPosition
             vehicleMap[values[0]]?.snippet = "Kierunek: " + values[3] + delayMessage
+            vehicleMap[values[0]]?.tag = values[6] + "&" + values[8] + "&" + values[12]
         } else {
             val markerName: Marker = googleMap.addMarker(
                 MarkerOptions()
@@ -70,6 +71,7 @@ class FileRead {
                     .title("Szczur - linia " + values[2])
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker))
                     .snippet("Kierunek: " + values[3] + delayMessage))
+            markerName.tag = values[6] + "&" + values[8] + "&" + values[12]
             vehicleMap[values[0]] = markerName
         }
         if (enteredText != "") {
@@ -132,8 +134,8 @@ class FileRead {
             MarkerOptions()
                 .position(stopPosition)
                 .title(values[2])
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker2))
-                .snippet("Akapit test\ndziała?"))
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker2)))
+        markerName.tag = values[0]
         stopMap[values[0]] = markerName
         stopMap[values[0]]?.isVisible = false
         return stopMap

@@ -70,6 +70,38 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             vehicleMap = updatedVehicleMap
         }
 
+        googleMap.setOnMarkerClickListener { marker ->
+            if (stopMap.containsValue(marker)) {
+                var newSnippet = "Nadjeżdżające:\n"
+                var totalDelay = 0.0
+                var vehicleComingToStopCounter = 0
+                for ((key, vehicle) in vehicleMap) {
+                    val vehicleString = vehicle.tag as String
+                    val vehicleInfo = vehicleString.split("&")
+                    val stopsId = vehicleInfo[0].split("/")
+                    val stopsNextStop = vehicleInfo[1]
+                    val vehicleDelay = vehicleInfo[2].toDouble()
+                    if (stopsId.contains(marker.tag)) {
+                        if (stopsId.indexOf(marker.tag) >= stopsId.indexOf(stopsNextStop)) {
+                            newSnippet += vehicle.title + " " + vehicle.snippet + "\n"
+                        }
+                        totalDelay += vehicleDelay
+                        vehicleComingToStopCounter += 1
+                    }
+                }
+                newSnippet += "Całkowite opóźnienie nadjeżdżających pojazdów: " + totalDelay + "\n"
+                if (vehicleComingToStopCounter == 0) {
+                    vehicleComingToStopCounter = 1
+                }
+                newSnippet += "Średnie opóźnienie nadjeżdżających pojazdów: " + totalDelay/vehicleComingToStopCounter + "\n"
+                marker.snippet = newSnippet
+            }
+            marker.showInfoWindow()
+
+            // Return true to indicate that the event has been consumed
+            true
+        }
+
         GlobalScope.launch {
             while (isActive) {
                 delay(5_000)
