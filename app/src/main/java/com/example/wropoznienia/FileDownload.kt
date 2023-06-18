@@ -67,7 +67,6 @@ class FileDownload {
     }
 
 
-
 //    fun getFromFirestore(markerList: MutableList<Marker>, googleMap: GoogleMap, db: FirebaseFirestore) {
 //        val collectionRef = db.collection("mpkdata")
 //        collectionRef.get()

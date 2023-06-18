@@ -24,6 +24,8 @@ class FileRead {
         enteredText: String,
         callback: (HashMap<String, Marker>) -> Unit
     ) {
+        var sumLineDelay = 0
+        var vehicleCount = 0
         var vehicleMapCopy = HashMap<String, Marker>()
         vehicleMapCopy.putAll(vehicleMap)
         var csvLines = ""
@@ -35,11 +37,26 @@ class FileRead {
             while (reader.readNext().also { nextLine = it } != null) {
                 // nextLine[] is an array of values from the line
                 csvLines = nextLine!!.joinToString(separator = ",")
+                val values = csvLines.split(",")
                 try {
-                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, stopMap, csvLines, googleMap, context, enteredText)
+                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, stopMap, values, googleMap, context, enteredText)
+                    if (enteredText != "") {
+                        sumLineDelay += values[12].toDouble().roundToInt()
+                        vehicleCount += 1
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     Toast.makeText(context, "Different error, maybe can't add rat?", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            if (enteredText != "") {
+                val avgDelay = (sumLineDelay / vehicleCount).toFloat().roundToInt()
+
+                for ((_, marker) in vehicleMapCopy) {
+                    val currentSnippet = marker.snippet
+                    val updatedSnippet = "$currentSnippet\n\nŚrednie opóźnienie linii: " + avgDelay + " s"
+                    marker.snippet = updatedSnippet
                 }
             }
 
@@ -54,13 +71,9 @@ class FileRead {
     }
 
 
-    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, stopMap: HashMap<String, Marker>,mpkLine: String, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
-        val values = mpkLine.split(",")
-        var delayMessage = " nie wiem ile :D"
+    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, stopMap: HashMap<String, Marker>, values: List<String>, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
-        if (values[8] != "NP") {
-            delayMessage = " Opóźnienie:" + values[12].toDouble().roundToInt() + "s"
-        }
+        var delayMessage = " Opóźnienie: " + values[12].toDouble().roundToInt() + " s"
         if (vehicleMap.containsKey(values[0])) {
             vehicleMap[values[0]]?.position = transportMpkPosition
             vehicleMap[values[0]]?.snippet = "Kierunek: " + values[3] + delayMessage
@@ -69,14 +82,14 @@ class FileRead {
             val markerName: Marker = googleMap.addMarker(
                 MarkerOptions()
                     .position(transportMpkPosition)
-                    .title("Szczur - linia " + values[2])
+                    .title("Szczur - linia ${values[2]}")
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker))
-                    .snippet("Kierunek: " + values[3] + delayMessage))
+                    .snippet("${values[3]}\n- - - - -\n${delayMessage}"))
             markerName.tag = values[6] + "&" + values[8] + "&" + values[12]
             vehicleMap[values[0]] = markerName
         }
         if (enteredText != "") {
-            if (!values[0].contains(enteredText+"_")) {
+            if (!values[0].contains(enteredText+"_", ignoreCase = true)) {
                 if (vehicleMap.containsKey(values[0])) {
                     vehicleMap[values[0]]?.isVisible = false
                 }
@@ -89,9 +102,6 @@ class FileRead {
             }
         } else {
             vehicleMap[values[0]]?.isVisible = true
-            for ((id, stop) in stopMap) {
-                stop.isVisible = false
-            }
         }
         return vehicleMap
     }

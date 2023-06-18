@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
         googleMap.setOnMarkerClickListener { marker ->
             if (stopMap.containsValue(marker)) {
-                var newSnippet = "Nadjeżdżające:\n"
+                var newSnippet = "" //"Nadjeżdżające:\n"
                 var totalDelay = 0
                 var vehicleComingToStopCounter = 0
                 for ((key, vehicle) in vehicleMap) {
@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                     val vehicleDelay = vehicleInfo[2].toDouble().roundToInt()
                     if (stopsId.contains(marker.tag)) {
                         if (stopsId.indexOf(marker.tag) >= stopsId.indexOf(stopsNextStop)) {
-                            newSnippet += vehicle.title + " " + vehicle.snippet + "\n"
+                            //newSnippet += vehicle.title + " " + vehicle.snippet + "\n"
                             totalDelay += vehicleDelay
                             vehicleComingToStopCounter += 1
                         }
@@ -107,8 +107,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             while (isActive) {
                 delay(5_000)
                 runOnUiThread {
-                    fileDownload.downloadFile(vehicleMap, stopMap, googleMap, application, context, enteredText, "vehicles_data.csv") { updatedVehicleMap ->
+                    fileDownload.downloadFile(
+                        vehicleMap,
+                        stopMap,
+                        googleMap,
+                        application,
+                        context,
+                        enteredText,
+                        "vehicles_data.csv"
+                    ) { updatedVehicleMap ->
                         vehicleMap = updatedVehicleMap
+                    }
+                    if (enteredText == "" && googleMap.cameraPosition.zoom > 15) {
+                        for ((key, marker) in stopMap) {
+                            marker.isVisible = true
+                        }
+                    } else if (enteredText == "" && googleMap.cameraPosition.zoom <= 15) {
+                        for ((key, marker) in stopMap) {
+                            marker.isVisible = false
+                        }
                     }
                 }
             }
