@@ -2,6 +2,7 @@ import mainfile
 from time import sleep
 from firebase_admin import credentials, initialize_app, firestore
 import firebase_service as fb
+import getmpkdata as mpk
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -41,8 +42,13 @@ columns = ['unique_id', 'brigade_id', 'route_id', 'direction', 'position_lat', '
 data = pd.DataFrame(columns=columns)
 h = 0
 
-trips_df = pd.read_csv("data/trips.txt")
-stops_df = pd.read_csv("data/stops.txt")
+try:
+    trips_df = pd.read_csv("data/trips.txt")
+    stops_df = pd.read_csv("data/stops.txt")
+except:
+    mpk.get_schedules('https://www.wroclaw.pl/open-data/87b09b32-f076-4475-8ec9-6020ed1f9ac0/OtwartyWroclaw_rozklad_jazdy_GTFS.zip', './data/')
+    trips_df = pd.read_csv("data/trips.txt")
+    stops_df = pd.read_csv("data/stops.txt")
 
 stop_mapping = stops_df.set_index('stop_id').loc[:, ['stop_lat', 'stop_lon']].to_dict(orient='index')
 

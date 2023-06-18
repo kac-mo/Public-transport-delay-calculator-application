@@ -22,81 +22,40 @@ class FileDownload {
 
     private val fileRead = FileRead()
 
-    private fun compareMD5Hash(storageRef: StorageReference, localFileMD5: String, callback: (Boolean) -> Unit) {
-        val stream = ByteArrayOutputStream()
-        storageRef.metadata.addOnSuccessListener { metadata ->
-            val remoteMD5Hash = metadata.md5Hash
-            val areHashesEqual = remoteMD5Hash.equals(localFileMD5, ignoreCase = true)
-            stream.close()
-            callback(areHashesEqual)
-        }.addOnFailureListener {
-            stream.close()
-            callback(false)
-        }
-    }
-
-    private fun calculateMD5(file: File): String {
-        val digest = MessageDigest.getInstance("MD5")
-        val buffer = ByteArray(8192)
-        val inputStream = FileInputStream(file)
-        var read: Int
-        while (inputStream.read(buffer).also { read = it } > 0) {
-            digest.update(buffer, 0, read)
-        }
-        inputStream.close()
-
-        val md5sum = digest.digest()
-        val hexString = StringBuilder()
-        for (i in md5sum.indices) {
-            val hex = Integer.toHexString(0xFF and md5sum[i].toInt())
-            if (hex.length == 1) {
-                hexString.append('0')
-            }
-            hexString.append(hex)
-        }
-        return hexString.toString()
-    }
-
-    fun downloadFile(markerList: MutableList<Marker>, googleMap: GoogleMap, application: Application, context: Context): MutableList<Marker> {
+    fun downloadFile(
+        vehicleMap: HashMap<String, Marker>,
+        googleMap: GoogleMap,
+        application: Application,
+        context: Context,
+        enteredText: String,
+        callback: (HashMap<String, Marker>) -> Unit
+    ): HashMap<String, Marker> {
         val storage = FirebaseStorage.getInstance()
         val storageRef = storage.reference.child("vehicles_data.csv")
-        var markerListCopy = mutableListOf<Marker>()
+        val vehicleMapCopy = HashMap<String, Marker>()
+        vehicleMapCopy.putAll(vehicleMap)
 
         val rootPath: File = File(application.getExternalFilesDir(null), "file_test")
         if (!rootPath.exists()) {
             rootPath.mkdirs()
         }
         val localFile = File(rootPath, "vehicles_data.csv")
-        // Calculate MD5 hash of the local file
-        var localFileMD5 = ""
         if (localFile.exists()) {
-            localFileMD5 = calculateMD5(localFile)
+            localFile.delete()
         }
-
-
-        // Compare MD5 hashes
-        compareMD5Hash(storageRef, localFileMD5) { areHashesEqual ->
-            if (areHashesEqual) {
-                // The file is already up to date, so directly call the reading function
-                fileRead.readCsvFile(context, localFile, markerList, googleMap)
-
-            } else {
-                // Delete the old file
-                if (localFile.exists()) {
-                    localFile.delete()
-                }
-
-                // Download the new file
-                storageRef.getFile(localFile).addOnSuccessListener {
-                    Log.e("firebase ", "Local temp file created: $localFile")
-                    // updateDb(timestamp, localFile.toString(), position);
-                    markerListCopy = fileRead.readCsvFile(context, localFile, markerList, googleMap)
-                }.addOnFailureListener { exception ->
-                    Log.e("firebase ", "Local temp file not created: $exception")
-                }
+        storageRef.getFile(localFile).addOnSuccessListener {
+            Log.e("firebase ", "Local temp file created: $localFile")
+            fileRead.readCsvFile(context, localFile, vehicleMapCopy, googleMap, enteredText) { vehicleMapCopy ->
+                // Invoke the callback with the updated map
+                callback(vehicleMapCopy)
             }
+        }.addOnFailureListener { exception ->
+            Log.e("firebase ", "Local temp file not created: $exception")
+            // Handle the failure case if needed
+            // For example, you can call the callback with the original vehicleMapCopy
+            callback(vehicleMapCopy)
         }
-        return markerListCopy
+        return vehicleMapCopy
     }
 
 

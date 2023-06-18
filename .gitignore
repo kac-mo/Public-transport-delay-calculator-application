@@ -14,8 +14,14 @@
 .cxx
 local.properties
 /data/test.xlsx
+<<<<<<< HEAD
 /python-app/data/*.txt
 /python-app/data/*.csv
 /python-app/data/*.xlsx
 /python-app/firebaseadminkey.json
 /app/src/main/res/raw/vehicles_data.csv
+/app/src/main/res/raw/vehicles_data.csv
+/python-app/firebaseadminkey.json
+/python-app
+/python-app/data
+
