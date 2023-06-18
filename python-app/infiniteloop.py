@@ -131,7 +131,7 @@ while True:
         try:
             print("Uploading file...")
             data.to_csv('data/vehicles_data.csv', encoding='utf-8-sig', index=False)
-            data.to_excel('data/vehicles_data.xlsx', encoding='utf-8-sig', index=False)
+            #data.to_excel('data/vehicles_data.xlsx', encoding='utf-8-sig', index=False)
 
             fb.upload_file_to_storage('data/vehicles_data.csv')
         except:
