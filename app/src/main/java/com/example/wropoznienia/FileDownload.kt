@@ -22,83 +22,49 @@ class FileDownload {
 
     private val fileRead = FileRead()
 
-    private fun compareMD5Hash(storageRef: StorageReference, localFileMD5: String, callback: (Boolean) -> Unit) {
-        val stream = ByteArrayOutputStream()
-        storageRef.metadata.addOnSuccessListener { metadata ->
-            val remoteMD5Hash = metadata.md5Hash
-            val areHashesEqual = remoteMD5Hash.equals(localFileMD5, ignoreCase = true)
-            stream.close()
-            callback(areHashesEqual)
-        }.addOnFailureListener {
-            stream.close()
-            callback(false)
-        }
-    }
-
-    private fun calculateMD5(file: File): String {
-        val digest = MessageDigest.getInstance("MD5")
-        val buffer = ByteArray(8192)
-        val inputStream = FileInputStream(file)
-        var read: Int
-        while (inputStream.read(buffer).also { read = it } > 0) {
-            digest.update(buffer, 0, read)
-        }
-        inputStream.close()
-
-        val md5sum = digest.digest()
-        val hexString = StringBuilder()
-        for (i in md5sum.indices) {
-            val hex = Integer.toHexString(0xFF and md5sum[i].toInt())
-            if (hex.length == 1) {
-                hexString.append('0')
-            }
-            hexString.append(hex)
-        }
-        return hexString.toString()
-    }
-
-    fun downloadFile(markerList: MutableList<Marker>, googleMap: GoogleMap, application: Application, context: Context): MutableList<Marker> {
+    fun downloadFile(
+        markerMap: HashMap<String, Marker>,
+        stopMap: HashMap<String, Marker>,
+        googleMap: GoogleMap,
+        application: Application,
+        context: Context,
+        enteredText: String,
+        fileName: String,
+        callback: (HashMap<String, Marker>) -> Unit
+    ): HashMap<String, Marker> {
         val storage = FirebaseStorage.getInstance()
-        val storageRef = storage.reference.child("vehicles_data.csv")
-        var markerListCopy = mutableListOf<Marker>()
+        val storageRef = storage.reference.child(fileName)
+        val markerMapCopy = HashMap<String, Marker>()
+        markerMapCopy.putAll(markerMap)
 
         val rootPath: File = File(application.getExternalFilesDir(null), "file_test")
         if (!rootPath.exists()) {
             rootPath.mkdirs()
         }
-        val localFile = File(rootPath, "vehicles_data.csv")
-        // Calculate MD5 hash of the local file
-        var localFileMD5 = ""
+        val localFile = File(rootPath, fileName)
         if (localFile.exists()) {
-            localFileMD5 = calculateMD5(localFile)
+            localFile.delete()
         }
-
-
-        // Compare MD5 hashes
-        compareMD5Hash(storageRef, localFileMD5) { areHashesEqual ->
-            if (areHashesEqual) {
-                // The file is already up to date, so directly call the reading function
-                fileRead.readCsvFile(context, localFile, markerList, googleMap)
-
-            } else {
-                // Delete the old file
-                if (localFile.exists()) {
-                    localFile.delete()
+        storageRef.getFile(localFile).addOnSuccessListener {
+            Log.e("firebase ", "Local temp file created: $localFile")
+            if (fileName == "vehicles_data.csv") {
+                fileRead.readCsvFile(context, localFile, markerMapCopy, stopMap, googleMap, enteredText) { markerMapCopy ->
+                    // Invoke the callback with the updated map
+                    callback(markerMapCopy)
                 }
-
-                // Download the new file
-                storageRef.getFile(localFile).addOnSuccessListener {
-                    Log.e("firebase ", "Local temp file created: $localFile")
-                    // updateDb(timestamp, localFile.toString(), position);
-                    markerListCopy = fileRead.readCsvFile(context, localFile, markerList, googleMap)
-                }.addOnFailureListener { exception ->
-                    Log.e("firebase ", "Local temp file not created: $exception")
+            } else if (fileName == "stops.txt") {
+                fileRead.readTxtFile(context, localFile, markerMapCopy, googleMap, enteredText) { markerMapCopy ->
+                    callback(markerMapCopy)
                 }
             }
+        }.addOnFailureListener { exception ->
+            Log.e("firebase ", "Local temp file not created: $exception")
+            // Handle the failure case if needed
+            // For example, you can call the callback with the original vehicleMapCopy
+            callback(markerMapCopy)
         }
-        return markerListCopy
+        return markerMapCopy
     }
-
 
 
 //    fun getFromFirestore(markerList: MutableList<Marker>, googleMap: GoogleMap, db: FirebaseFirestore) {

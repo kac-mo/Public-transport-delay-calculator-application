@@ -215,7 +215,7 @@ def create_line_brigade_df(records, current_day_time):
                     elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
                 # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
                 time_difference = abs(current_day_time - update_time)
-                if time_difference.seconds < 300:
+                if time_difference.seconds < 300 or time_difference.seconds >= 300:
                     # Pobieram id brygady - unikalne ID per pojazd per linia
                     elem['brigade_id'] = elem['Brygada'][-2:]
                     # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
