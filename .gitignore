@@ -16,3 +16,8 @@ local.properties
 /data/test.xlsx
 /python-app/firebaseadminkey.json
 /python-app/data
+/python-app/data/*.txt
+/python-app/data/*.csv
+/python-app/data/*.xlsx
+/python-app/firebaseadminkey.json
+/app/src/main/res/raw/vehicles_data.csv

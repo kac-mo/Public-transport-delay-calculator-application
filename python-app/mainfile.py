@@ -5,49 +5,54 @@ import getmpkdata as mpk
 import textmanipulations as tedit
 
 def rare_data_upkeep(stop_times_df):
-    print('Getting MPK schedules...')
-    mpk.get_schedules('https://www.wroclaw.pl/open-data/87b09b32-f076-4475-8ec9-6020ed1f9ac0/OtwartyWroclaw_rozklad_jazdy_GTFS.zip', './data/')
-    
     trip_id_list = []
     trip_stop_times = []
     trip_stop_ids = []
 
-    past_pct = ""  # Zmienna służaca temu, żeby każda wartość % była wydrukowana tylko raz
     date_today = str(datetime.now()).split(" ")[0]  # Dzisiejsza data w postaci string
-    # Jutrzejsza data w postaci string
-    date_tomorrow = str(datetime.now() + timedelta(days=1)).split(" ")[0]
+    date_tomorrow = str(datetime.now() + timedelta(days=1)).split(" ")[0] # Jutrzejsza data w postaci string
 
-    j = 0
+    grouped_df = stop_times_df.groupby('trip_id')
 
-    while j < len(stop_times_df):
-        trip_id = stop_times_df['trip_id'][j]
-        trip_stop_times_str = ""
-        trip_stop_ids_str = ""
-        if trip_id_list.count(trip_id) == 0:
-            while stop_times_df['trip_id'][j] == trip_id:
-                trip_stop_ids_str += f"{stop_times_df['stop_id'][j]}/"
-                trip_stop_times_str += f"{tedit.match_datetime_midnight_formatting(stop_times_df['arrival_time'][j], date_today, date_tomorrow)}/"
-                j += 1
-                if j == len(stop_times_df):
-                    break
+    trip_stop_times_str = grouped_df['arrival_time'].apply(lambda x: '/'.join(tedit.match_datetime_midnight_formatting(time, date_today, date_tomorrow) for time in x)).reset_index(drop=True)
+    trip_stop_ids_str = grouped_df['stop_id'].apply(lambda x: '/'.join(str(stop) for stop in x)).reset_index(drop=True)
 
-            trip_stop_times_str = trip_stop_times_str[:-1]
-            trip_stop_ids_str = trip_stop_ids_str[:-1]
-            trip_id_list.append(trip_id)
-            trip_stop_times.append(trip_stop_times_str)
-            trip_stop_ids.append(trip_stop_ids_str)
+    unique_trip_ids = grouped_df.groups.keys()
+    trip_id_list.extend(unique_trip_ids)
+    trip_stop_times.extend(trip_stop_times_str)
+    trip_stop_ids.extend(trip_stop_ids_str)
 
-            if j == len(stop_times_df):
-                break
+    # j = 0
 
-            if str(round((j / (len(stop_times_df)) * 100), 0)) != past_pct:
-                print(
-                    f"Progress: {str(round((j / (len(stop_times_df)) * 100), 0))}%")
-                past_pct = str(round((j / (len(stop_times_df)) * 100), 0))
+    # while j < len(stop_times_df):
+    #     trip_id = stop_times_df['trip_id'][j]
+    #     trip_stop_times_str = ""
+    #     trip_stop_ids_str = ""
+    #     if trip_id_list.count(trip_id) == 0:
+    #         while stop_times_df['trip_id'][j] == trip_id:
+    #             trip_stop_ids_str += f"{stop_times_df['stop_id'][j]}/"
+    #             trip_stop_times_str += f"{tedit.match_datetime_midnight_formatting(stop_times_df['arrival_time'][j], date_today, date_tomorrow)}/"
+    #             j += 1
+    #             if j == len(stop_times_df):
+    #                 break
+
+    #         trip_stop_times_str = trip_stop_times_str[:-1]
+    #         trip_stop_ids_str = trip_stop_ids_str[:-1]
+    #         trip_id_list.append(trip_id)
+    #         trip_stop_times.append(trip_stop_times_str)
+    #         trip_stop_ids.append(trip_stop_ids_str)
+
+    #         if j == len(stop_times_df):
+    #             break
+
+    #         if str(round((j / (len(stop_times_df)) * 100), 0)) != past_pct:
+    #             past_pct = str(round((j / (len(stop_times_df)) * 100), 0))
+    #             print(f"Progress: {past_pct}%")
 
     stop_times_start_end_data = {'trip_id': trip_id_list, 'trip_stop_ids': trip_stop_ids, 'trip_stop_times': trip_stop_times}
     trip_info_df = pd.DataFrame(stop_times_start_end_data)
     trip_info_df.to_csv('data/trip_info.csv', encoding='utf-8-sig', index=False)
+    print("data upkeep: done.")
 
 def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_info_df, current_service_id, current_day_time):
     brigade_ids = []
@@ -69,7 +74,7 @@ def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_info_df, current
     ].copy()
 
     for i in range(len(line_brigade_df)):
-        try:
+        # try:
             temp_df = now_trips_df[
                 (now_trips_df['route_id'] == str(line_brigade_df['Numer_Linii'][i])) &
                 (now_trips_df['brigade_id'] == int(line_brigade_df['brigade_id'][i]))
@@ -96,6 +101,7 @@ def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_info_df, current
                         possible_start_time  # Rozkładowy czas trwania trasy
                     time_since_trip_started = possible_end_time - \
                         current_day_time  # Czas od rozkładowego wyruszenia
+                    
                     # Sprawdzam możliwe tripy, na których może znajdować się pojazd
                     if current_day_time > possible_start_time and current_day_time < possible_end_time:
                         possible_trips_list.append(
@@ -103,13 +109,13 @@ def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_info_df, current
 
                     # Jeśli możliwych tripów było > 1, wówczas dokonuję weryfikacji
                     if len(possible_trips_list) > 1:
-                        try:
+                        # try:
                             possible_trips_list = solve_double_possible_paths(
                                 possible_trips_list, stops_df, trip_info_df, current_vehicle_lat, current_vehicle_lon)
-                        except:
-                            # print(
-                            #     "- - - -\nUNRESOLVED ERROR, FLIPPING A COIN ON VEHICLE MATCH...")
-                            possible_trips_list = [possible_trips_list[0]]
+                        # except:
+                        #     # print(
+                        #     #     "- - - -\nUNRESOLVED ERROR, FLIPPING A COIN ON VEHICLE MATCH...")
+                        #     possible_trips_list = [possible_trips_list[0]]
 
                 if len(possible_trips_list) > 0:
                     route_ids.append(possible_route_id)
@@ -120,19 +126,16 @@ def get_vehicles_data(line_brigade_df, trips_df, stops_df, trip_info_df, current
                     brigade_ids.append(line_brigade_df['brigade_id'][i])
                     stops_ids.append(possible_trips_list[0][6])
                     stops_times.append(possible_trips_list[0][7])
-        except:
-            print("Oof")
-            pass
+        # except:
+        #     print("Oof")
+        #     pass
 
     return (route_ids, directions, current_lat, current_lon, stops_ids, stops_times, brigade_ids)
 
 def solve_double_possible_paths(possible_trips_list, stops_df, trip_info_df, current_lat, current_lon):
-    
 
-    stops1 = trip_info_df.loc[(trip_info_df['trip_id'] == possible_trips_list[0][0])].iloc[0, 4].replace(
-        "'", "").replace(" ", "")[1:-1].split(",")  # ID pierwszego i ostatniego przystanku 1. możliwej trasy
-    stops2 = trip_info_df.loc[(trip_info_df['trip_id'] == possible_trips_list[1][0])].iloc[0, 4].replace(
-        "'", "").replace(" ", "")[1:-1].split(",")  # ID pierwszego i ostatniego przystanku 2. możliwej trasy
+    stops1 = trip_info_df.loc[(trip_info_df['trip_id'] == possible_trips_list[0][0]), 'trip_stop_ids'].values[0].split("/")  # ID przystanków 1. możliwej trasy
+    stops2 = trip_info_df.loc[(trip_info_df['trip_id'] == possible_trips_list[1][0]), 'trip_stop_ids'].values[0].split("/")  # ID przystanków 2. możliwej trasy
 
     # Procentowy progress czasowy 1
     time_on_trip_pct1 = possible_trips_list[0][5] / possible_trips_list[0][4]
@@ -142,12 +145,12 @@ def solve_double_possible_paths(possible_trips_list, stops_df, trip_info_df, cur
     first_stop_pos1 = (stops_df.loc[(stops_df['stop_id'] == int(
         stops1[0]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops1[0]))].iloc[0, 4])
     final_stop_pos1 = (stops_df.loc[(stops_df['stop_id'] == int(
-        stops1[1]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops1[1]))].iloc[0, 4])
+        stops1[-1]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops1[-1]))].iloc[0, 4])
 
     first_stop_pos2 = (stops_df.loc[(stops_df['stop_id'] == int(
         stops2[0]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops2[0]))].iloc[0, 4])
     final_stop_pos2 = (stops_df.loc[(stops_df['stop_id'] == int(
-        stops2[1]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops2[1]))].iloc[0, 4])
+        stops2[-1]))].iloc[0, 3], stops_df.loc[(stops_df['stop_id'] == int(stops2[-1]))].iloc[0, 4])
 
     current_distance_from_first_stop1 = distance.geodesic(
         (current_lat, current_lon), first_stop_pos1).km
@@ -189,14 +192,11 @@ def create_vehicles_data_csv(line_brigade_df, trips_df, stops_df, current_servic
     
     unique_ids = []
     for i in range(len(brigade_ids)):
-        unique_ids.append(str(route_ids[i]) + '_' + str(brigade_ids[i])) # Teoretycznie unikalne ID per pojazd
+        unique_ids.append(str(route_ids[i]) + '_' + str(brigade_ids[i])) # Unikalne ID per pojazd
 
-    # Co potrzebujemy w CSV? Route_ID, Kierunek, pozycja, rozkład jazdy
     present_data = {'unique_id': unique_ids, 'brigade_id': brigade_ids, 'route_id': route_ids, 'direction': directions,
             'position_lat': current_lat, 'position_lon': current_lon, 'stops_ids': stops_ids, 'stops_times': stops_times}
     present_data_df = pd.DataFrame(present_data)
-    # present_data_df.to_csv(
-    #     'data/vehicles_data.csv', encoding='utf-8-sig', index=False)
 
     # print("File creation completed")
     return present_data_df
@@ -215,7 +215,7 @@ def create_line_brigade_df(records, current_day_time):
                     elem['Data_Aktualizacji'][:19], "%Y-%m-%d %H:%M:%S")
                 # Sprawdzam ile czasu mija między teraz a ostatnią aktualizacją pojazdu
                 time_difference = abs(current_day_time - update_time)
-                if time_difference.seconds < 300 or time_difference.seconds >= 300:
+                if time_difference.seconds < 300:
                     # Pobieram id brygady - unikalne ID per pojazd per linia
                     elem['brigade_id'] = elem['Brygada'][-2:]
                     # Usuwam zera, które czasem pojawiają się przy zbieraniu ostatnich dwóch elementów z 'Brygady'
