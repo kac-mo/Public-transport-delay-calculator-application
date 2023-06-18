@@ -27,15 +27,13 @@ class FileDownload {
         googleMap: GoogleMap,
         application: Application,
         context: Context,
+        enteredText: String,
         callback: (HashMap<String, Marker>) -> Unit
     ): HashMap<String, Marker> {
         val storage = FirebaseStorage.getInstance()
         val storageRef = storage.reference.child("vehicles_data.csv")
         val vehicleMapCopy = HashMap<String, Marker>()
         vehicleMapCopy.putAll(vehicleMap)
-        for ((key, value) in vehicleMapCopy) {
-            Log.d("HashMapPrint1", "Key: $key, Value: $value")
-        }
 
         val rootPath: File = File(application.getExternalFilesDir(null), "file_test")
         if (!rootPath.exists()) {
@@ -47,10 +45,7 @@ class FileDownload {
         }
         storageRef.getFile(localFile).addOnSuccessListener {
             Log.e("firebase ", "Local temp file created: $localFile")
-            fileRead.readCsvFile(context, localFile, vehicleMapCopy, googleMap) { vehicleMapCopy ->
-                if (vehicleMapCopy.isEmpty()) {
-                    Log.d("HashMapPrint", "First check")
-                }
+            fileRead.readCsvFile(context, localFile, vehicleMapCopy, googleMap, enteredText) { vehicleMapCopy ->
                 // Invoke the callback with the updated map
                 callback(vehicleMapCopy)
             }
@@ -59,10 +54,6 @@ class FileDownload {
             // Handle the failure case if needed
             // For example, you can call the callback with the original vehicleMapCopy
             callback(vehicleMapCopy)
-        }
-
-        if (vehicleMapCopy.isEmpty()) {
-            Log.d("HashMapPrint", "Second check")
         }
         return vehicleMapCopy
     }

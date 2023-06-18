@@ -19,6 +19,7 @@ class FileRead {
         file: File,
         vehicleMap: HashMap<String, Marker>,
         googleMap: GoogleMap,
+        enteredText: String,
         callback: (HashMap<String, Marker>) -> Unit
     ) {
         var vehicleMapCopy = HashMap<String, Marker>()
@@ -33,7 +34,7 @@ class FileRead {
                 // nextLine[] is an array of values from the line
                 csvLines = nextLine!!.joinToString(separator = ",")
                 try {
-                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, csvLines, googleMap, context)
+                    vehicleMapCopy = addVehicleToMap(vehicleMapCopy, csvLines, googleMap, context, enteredText)
                 } catch (e: Exception) {
                     e.printStackTrace()
                     Toast.makeText(context, "Different error, maybe can't add rat?", Toast.LENGTH_SHORT).show()
@@ -51,7 +52,7 @@ class FileRead {
     }
 
 
-    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, mpkLine: String, googleMap: GoogleMap, context: Context): HashMap<String, Marker> {
+    private fun addVehicleToMap(vehicleMap: HashMap<String, Marker>, mpkLine: String, googleMap: GoogleMap, context: Context, enteredText: String): HashMap<String, Marker> {
         val values = mpkLine.split(",")
         var delayMessage = " nie wiem ile :D"
         val transportMpkPosition = LatLng(values[4].toDouble(), values[5].toDouble())
@@ -60,7 +61,7 @@ class FileRead {
         }
         if (vehicleMap.containsKey(values[0])) {
             vehicleMap[values[0]]?.position = transportMpkPosition
-            vehicleMap[values[0]]?.snippet = delayMessage
+            vehicleMap[values[0]]?.snippet = "Kierunek: " + values[3] + delayMessage
         } else {
             val markerName: Marker = googleMap.addMarker(
                 MarkerOptions()
@@ -69,6 +70,17 @@ class FileRead {
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.mymarker))
                     .snippet("Kierunek: " + values[3] + delayMessage))
             vehicleMap[values[0]] = markerName
+        }
+        if (enteredText != "") {
+            if (!values[0].contains(enteredText+"_")) {
+                if (vehicleMap.containsKey(values[0])) {
+                    vehicleMap[values[0]]?.isVisible = false
+                }
+            } else {
+                vehicleMap[values[0]]?.isVisible = true
+            }
+        } else {
+            vehicleMap[values[0]]?.isVisible = true
         }
         return vehicleMap
     }

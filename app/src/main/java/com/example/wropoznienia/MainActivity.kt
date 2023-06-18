@@ -3,6 +3,9 @@ package com.example.wropoznienia
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.EditText
+import android.widget.ImageButton
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -12,6 +15,7 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
+import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -20,9 +24,14 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private val REQUEST_PERMISSIONS_REQUEST_CODE = 1
+
+    private lateinit var textInputDialog: AlertDialog
+    private var enteredText = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        initTextInputDialog()
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map_fragment) as? SupportMapFragment
         mapFragment?.getMapAsync(this)
     }
@@ -43,8 +52,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 //                }
 //            }
 //        }
+        val btnAdd: ImageButton = findViewById(R.id.btnAdd)
+        btnAdd.setOnClickListener {
+            textInputDialog.show()
+        }
 
-        fileDownload.downloadFile(vehicleMap, googleMap, application, context) { updatedVehicleMap ->
+
+        fileDownload.downloadFile(vehicleMap, googleMap, application, context, enteredText) { updatedVehicleMap ->
             vehicleMap = updatedVehicleMap
         }
 
@@ -52,7 +66,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             while (isActive) {
                 delay(5_000)
                 runOnUiThread {
-                    fileDownload.downloadFile(vehicleMap, googleMap, application, context) { updatedVehicleMap ->
+                    fileDownload.downloadFile(vehicleMap, googleMap, application, context, enteredText) { updatedVehicleMap ->
                         vehicleMap = updatedVehicleMap
                     }
                 }
@@ -66,6 +80,27 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     public override fun onPause() {
         super.onPause()
     }
+
+    private fun initTextInputDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Enter Text")
+
+        val input = EditText(this)
+        builder.setView(input)
+
+        builder.setPositiveButton("OK") { dialog, which ->
+            enteredText = input.text.toString()
+            // Do something with the entered text
+            // For example, you can display it in a TextView or perform some other action
+        }
+
+        builder.setNegativeButton("Cancel") { dialog, which ->
+            dialog.cancel()
+        }
+
+        textInputDialog = builder.create()
+    }
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
