@@ -1,0 +1,6 @@
+﻿vehicle_type_id,vehicle_type_name,vehicle_type_description,vehicle_type_symbol
+1,"Solo","","S"
+2,"Przegubowy","","P"
+8,"Midi","","M"
+13,"Mini","","m"
+149,"-INNY-","",""

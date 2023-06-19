@@ -136,5 +136,3 @@ while True:
             fb.upload_file_to_storage('data/vehicles_data.csv')
         except:
             pass
-        
-        sleep(10)
