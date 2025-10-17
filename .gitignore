@@ -18,3 +18,4 @@ local.properties
 /app/src/main/res/raw/vehicles_data.csv
 /app/src/main/res/raw/vehicles_data.csv
 /python-app/firebaseadminkey.json
+/app/google-services.json
